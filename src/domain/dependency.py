@@ -1,10 +1,38 @@
 """ステップの依存関係を解析し、必要な準備ステップを挿入する純粋関数群
 """
 from pathlib import Path
+from typing import Optional, Dict, Any
 
 from src.domain.services.step_generation_service import execution_context_to_simple_context
 from src.domain.step import Step, StepContext, StepType
 from src.domain.step_runner import expand_template
+
+
+def create_mkdir_step(path: str, cwd: Optional[str] = None) -> Step:
+    """MKDIRステップを作成するファクトリー関数
+    
+    Args:
+        path: 作成するディレクトリのパス
+        cwd: 作業ディレクトリ（オプション）
+        
+    Returns:
+        Step: 必要なフィールドを持つMKDIRステップ
+    """
+    return Step(
+        type=StepType.MKDIR,
+        cmd=[path],
+        allow_failure=True,
+        show_output=False,
+        cwd=cwd,
+        force_env_type=None,
+        format_options=None,
+        output_format=None,
+        format_preset=None,
+        when=None,
+        name=None,
+        auto_generated=True,
+        max_workers=1
+    )
 
 
 def resolve_dependencies(steps: list[Step], context: StepContext) -> list[Step]:
@@ -62,17 +90,14 @@ def generate_preparation_steps(step: Step, existing_dirs: set[str], existing_fil
             dst_path = step.cmd[1]
             dst_dir = str(Path(dst_path).parent)
             if dst_dir != '.' and dst_dir not in existing_dirs:
-                mkdir_step = Step(type=StepType.MKDIR, cmd=[dst_dir], allow_failure=True, auto_generated=True)
-                prep_steps.append(mkdir_step)
+                prep_steps.append(create_mkdir_step(dst_dir))
     elif step.type == StepType.TOUCH and len(step.cmd) >= 1:
         file_path = step.cmd[0]
         parent_dir = str(Path(file_path).parent)
         if parent_dir != '.' and parent_dir not in existing_dirs:
-            mkdir_step = Step(type=StepType.MKDIR, cmd=[parent_dir], allow_failure=True, auto_generated=True)
-            prep_steps.append(mkdir_step)
+            prep_steps.append(create_mkdir_step(parent_dir))
     if step.cwd and step.cwd not in existing_dirs:
-        mkdir_step = Step(type=StepType.MKDIR, cmd=[step.cwd], allow_failure=True, auto_generated=True)
-        prep_steps.append(mkdir_step)
+        prep_steps.append(create_mkdir_step(step.cwd, cwd=step.cwd))
     return prep_steps
 
 def update_resource_tracking(step: Step, existing_dirs: set[str], existing_files: set[str]) -> None:
@@ -168,7 +193,21 @@ def optimize_mkdir_steps(steps: list[Step]) -> list[Step]:
                 j += 1
             unique_paths = list(dict.fromkeys(mkdir_paths))
             for path in unique_paths:
-                optimized.append(Step(type=StepType.MKDIR, cmd=[path], allow_failure=step.allow_failure, show_output=step.show_output, cwd=step.cwd, force_env_type=step.force_env_type))
+                optimized.append(Step(
+                    type=StepType.MKDIR,
+                    cmd=[path],
+                    allow_failure=step.allow_failure,
+                    show_output=step.show_output,
+                    cwd=step.cwd,
+                    force_env_type=step.force_env_type,
+                    format_options=step.format_options,
+                    output_format=step.output_format,
+                    format_preset=step.format_preset,
+                    when=step.when,
+                    name=step.name,
+                    auto_generated=step.auto_generated,
+                    max_workers=step.max_workers
+                ))
             i = j
         else:
             optimized.append(step)

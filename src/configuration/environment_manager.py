@@ -68,26 +68,9 @@ class EnvironmentManager:
 
     def _create_success_result(self, operation: str, message: str) -> OperationResult:
         """Create a successful OperationResult."""
-        mock_request = Mock()
-        mock_request.operation_type = operation
-        mock_exception = Exception("No error - successful operation")
-        return OperationResult(
-            success=True,
-            returncode=0,
-            stdout=None,
-            stderr=None,
-            content=None,
-            exists=None,
-            path=None,
-            op=operation,
-            cmd=None,
-            request=mock_request,
-            start_time=None,
-            end_time=None,
-            error_message=message,
-            exception=mock_exception,
-            metadata={},
-            skipped=False
+        return OperationResult.create_success(
+            message=message,
+            details={'operation': operation}
         )
 
     def execute_request(self, request: OperationRequestFoundation, driver: Any) -> OperationResult:

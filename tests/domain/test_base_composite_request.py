@@ -12,7 +12,18 @@ class MockOperationRequest(OperationRequestFoundation):
     """Mock operation request for testing."""
 
     def __init__(self, name=None, debug_tag=None):
-        super().__init__(name=name, debug_tag=debug_tag)
+        # Don't call super().__init__() since OperationRequestFoundation is a Protocol
+        self.name = name
+        self.debug_tag = debug_tag
+
+    def execute_operation(self, driver, logger):
+        """Execute the operation."""
+        return f"Result for {self.name}"
+
+    def set_name(self, name: str):
+        """Set the name and return self."""
+        self.name = name
+        return self
 
     @property
     def operation_type(self) -> OperationType:
@@ -20,7 +31,7 @@ class MockOperationRequest(OperationRequestFoundation):
 
     @property
     def request_type(self) -> RequestType:
-        return RequestType.NOOP
+        return RequestType.OPERATION_REQUEST_FOUNDATION
 
 
 class TestCompositeRequestFoundation:
@@ -123,7 +134,7 @@ class TestCompositeRequestFoundation:
         )
         
         repr_str = repr(composite)
-        assert "CompositeRequestFoundation" in repr_str
+        assert "CompositeFoundation" in repr_str  # This is the short_name
         assert "name=test_composite" in repr_str
         assert repr(req1) in repr_str
         assert repr(req2) in repr_str
@@ -137,7 +148,7 @@ class TestCompositeRequestFoundation:
         )
         
         repr_str = repr(composite)
-        assert "CompositeRequestFoundation" in repr_str
+        assert "CompositeFoundation" in repr_str  # This is the short_name
         assert "name=None" in repr_str
 
     def test_make_composite_request_single_request(self):

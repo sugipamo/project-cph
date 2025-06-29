@@ -14,7 +14,9 @@ class MockOperationRequest(OperationRequestFoundation):
     """Mock operation request for testing."""
 
     def __init__(self, name=None, debug_tag=None, should_fail=False):
-        super().__init__(name=name, debug_tag=debug_tag)
+        # Don't call super().__init__() since OperationRequestFoundation is a Protocol
+        self.name = name
+        self.debug_tag = debug_tag
         self.should_fail = should_fail
         self.executed = False
 
@@ -146,12 +148,11 @@ class TestCompositeRequest:
             execution_controller=None
         )
         
-        # Mock the parent's execute_operation method
-        with patch.object(composite, 'execute_operation', return_value=["result"]) as mock_execute:
-            result = composite.execute_composite_operation(driver, logger)
-            
-            assert result == ["result"]
-            mock_execute.assert_called_once_with(driver, logger)
+        # Test that execute_composite_operation properly executes the requests
+        result = composite.execute_composite_operation(driver, logger)
+        
+        assert result == ["Result for req1"]
+        assert req1.executed
 
     def test_execute_core_sequential(self):
         """Test _execute_core with sequential execution."""

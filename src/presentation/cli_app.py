@@ -5,8 +5,9 @@ from typing import Optional
 from src.domain.services.workflow_execution_service import WorkflowExecutionService
 from src.infrastructure.di_container import DIKey
 from src.operations.error_codes import ErrorSuggestion, classify_error
-from src.operations.results.__init__ import CompositeStepFailureError, WorkflowExecutionResult
-from src.presentation.user_input_parser_integration import parse_user_input
+from src.domain.composite_step_failure import CompositeStepFailureError
+from src.domain.workflow_result import WorkflowExecutionResult
+from src.presentation.user_input_parser import parse_user_input
 
 
 class MinimalCLIApp:

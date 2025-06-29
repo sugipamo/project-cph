@@ -14,7 +14,9 @@ class CompositeRequestFoundation(OperationRequestFoundation):
     """
 
     def __init__(self, requests: list[OperationRequestFoundation], debug_tag: Optional[str], name: Optional[str]):
-        super().__init__(name=name, debug_tag=debug_tag)
+        # Store attributes directly since OperationRequestFoundation is a Protocol
+        self.name = name
+        self.debug_tag = debug_tag
         if not all(isinstance(r, OperationRequestFoundation) for r in requests):
             raise TypeError("All elements of 'requests' must be OperationRequestFoundation (or its subclass)")
         self.requests = requests
@@ -59,4 +61,16 @@ class CompositeRequestFoundation(OperationRequestFoundation):
             else:
                 count += 1
         return count
+
+    def execute_operation(self, driver, logger):
+        """Execute the composite operation.
+        
+        This is the interface method required by OperationRequestFoundation protocol.
+        The actual implementation should be provided by subclasses.
+        """
+        return self._execute_core(driver, logger)
+    
+    def _execute_core(self, driver, logger):
+        """Core execution logic to be implemented by subclasses."""
+        raise NotImplementedError("Subclasses must implement _execute_core")
 

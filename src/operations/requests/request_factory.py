@@ -3,9 +3,10 @@
 クリーンアーキテクチャ準拠: operations層からinfrastructure層への直接依存を削除
 代わりに抽象化レイヤーを使用し、依存性注入でリクエスト作成機能を提供
 """
-from typing import Any, Optional, Protocol
+from typing import Any, Optional, Protocol, runtime_checkable
 
 
+@runtime_checkable
 class OperationRequestFoundation(Protocol):
     """Request base protocol - infrastructure層の実装への依存を避ける"""
     def execute_operation(self, driver: Any, logger: Any) -> Any:
