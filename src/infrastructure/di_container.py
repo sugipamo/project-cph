@@ -19,6 +19,7 @@ class DIKey(Enum):
     SQLITE_PROVIDER = "sqlite_provider"
     OS_PROVIDER = "os_provider"
     SYS_PROVIDER = "sys_provider"
+    FILE_PROVIDER = "file_provider"
     CONFIGURATION_REPOSITORY = "configuration_repository"
 
     # Persistence (legacy keys for backward compatibility)

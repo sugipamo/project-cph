@@ -14,8 +14,8 @@ import ast
 from pathlib import Path
 from typing import List, Set
 import sys
-sys.path.append(str(Path(__file__).parent.parent))
-from models.check_result import CheckResult, FailureLocation, LogLevel
+sys.path.append(str(Path(__file__).parent.parent.parent.parent))
+from src_check.models.check_result import CheckResult, FailureLocation, LogLevel
 
 class SideEffectChecker(ast.NodeVisitor):
     """
@@ -144,16 +144,19 @@ def main() -> CheckResult:
     Returns:
         CheckResult: チェック結果
     """
-    project_root = Path(__file__).parent.parent.parent
+    project_root = Path(__file__).parent.parent.parent.parent
     src_dir = project_root / 'src'
     all_violations = []
     
     if src_dir.exists():
+        file_count = 0
         for py_file in src_dir.rglob('*.py'):
             if '__pycache__' in str(py_file):
                 continue
+            file_count += 1
             violations = check_file(py_file)
             all_violations.extend(violations)
+        print(f"チェックしたファイル数: {file_count}")
     
     fix_policy = '''【CLAUDE.mdルール違反】
 副作用はsrc/infrastructureのみとする
@@ -259,3 +262,17 @@ result = processor.process_config('config.json', 'output.json')'''
 if __name__ == '__main__':
     result = main()
     print(f'副作用チェッカー: {len(result.failure_locations)}件の違反を検出')
+    
+    # 違反箇所を出力
+    if result.failure_locations:
+        print("\n違反箇所:")
+        violation_counts = {}
+        for violation in result.failure_locations:
+            file_path = violation.file_path
+            if file_path not in violation_counts:
+                violation_counts[file_path] = []
+            violation_counts[file_path].append(violation.line_number)
+        
+        for file_path, lines in sorted(violation_counts.items()):
+            print(f"\n{file_path}:")
+            print(f"  行番号: {sorted(lines)}")

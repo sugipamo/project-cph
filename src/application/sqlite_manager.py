@@ -10,24 +10,28 @@ from typing import Any, Optional
 class SQLiteManager:
     """Manages SQLite database connections and schema migrations."""
 
-    def __init__(self, db_path: str, sqlite_provider):
+    def __init__(self, db_path: str, sqlite_provider, file_provider):
         """Initialize SQLite manager.
 
         Args:
             db_path: Path to the SQLite database file
             sqlite_provider: SQLite操作プロバイダー
+            file_provider: ファイル操作プロバイダー
         """
         self.db_path = Path(db_path)
         if sqlite_provider is None:
             raise ValueError("sqlite_provider is required and cannot be None")
+        if file_provider is None:
+            raise ValueError("file_provider is required and cannot be None")
         self._sqlite_provider = sqlite_provider
+        self._file_provider = file_provider
         self._ensure_db_directory()
         self._initialize_database()
 
 
     def _ensure_db_directory(self) -> None:
         """Ensure the database directory exists."""
-        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self._file_provider.create_directory(str(self.db_path.parent), parents=True, exist_ok=True)
 
     def _initialize_database(self) -> None:
         """Initialize database and run migrations."""

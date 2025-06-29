@@ -18,20 +18,32 @@ class TestSQLiteManager:
         return Mock()
     
     @pytest.fixture
+    def mock_file_provider(self):
+        """Create a mock file provider."""
+        return Mock()
+    
+    @pytest.fixture
     def temp_dir(self):
         """Create a temporary directory for test databases."""
         temp_dir = tempfile.mkdtemp()
         yield temp_dir
         shutil.rmtree(temp_dir)
     
-    def test_init_with_none_provider_raises_error(self, temp_dir):
-        """Test initialization with None provider raises ValueError."""
+    def test_init_with_none_sqlite_provider_raises_error(self, temp_dir, mock_file_provider):
+        """Test initialization with None sqlite provider raises ValueError."""
         db_path = f"{temp_dir}/test.db"
         
         with pytest.raises(ValueError, match="sqlite_provider is required and cannot be None"):
-            SQLiteManager(db_path, None)
+            SQLiteManager(db_path, None, mock_file_provider)
     
-    def test_init_creates_directory_and_initializes_db(self, mock_sqlite_provider, temp_dir):
+    def test_init_with_none_file_provider_raises_error(self, temp_dir, mock_sqlite_provider):
+        """Test initialization with None file provider raises ValueError."""
+        db_path = f"{temp_dir}/test.db"
+        
+        with pytest.raises(ValueError, match="file_provider is required and cannot be None"):
+            SQLiteManager(db_path, mock_sqlite_provider, None)
+    
+    def test_init_creates_directory_and_initializes_db(self, mock_sqlite_provider, mock_file_provider, temp_dir):
         """Test initialization creates directory and initializes database."""
         db_path = f"{temp_dir}/subdir/test.db"
         mock_conn = Mock()
@@ -40,9 +52,10 @@ class TestSQLiteManager:
         mock_conn.execute.return_value = mock_cursor
         mock_sqlite_provider.connect.return_value = mock_conn
         
-        manager = SQLiteManager(db_path, mock_sqlite_provider)
+        manager = SQLiteManager(db_path, mock_sqlite_provider, mock_file_provider)
         
-        assert Path(db_path).parent.exists()
+        # Check that create_directory was called with the parent directory
+        mock_file_provider.create_directory.assert_called_with(str(Path(db_path).parent), parents=True, exist_ok=True)
         mock_sqlite_provider.connect.assert_called_with(db_path)
         mock_conn.execute.assert_any_call("PRAGMA foreign_keys = ON")
         
@@ -57,7 +70,7 @@ class TestSQLiteManager:
     @patch('pathlib.Path.open')
     @patch('pathlib.Path.glob')
     @patch('pathlib.Path.exists')
-    def test_run_migrations(self, mock_exists, mock_glob, mock_open, mock_sqlite_provider, temp_dir):
+    def test_run_migrations(self, mock_exists, mock_glob, mock_open, mock_sqlite_provider, mock_file_provider, temp_dir):
         """Test migration execution."""
         db_path = f"{temp_dir}/test.db"
         mock_conn = Mock()
@@ -80,7 +93,7 @@ class TestSQLiteManager:
         
         mock_glob.return_value = [mock_migration_file]
         
-        manager = SQLiteManager(db_path, mock_sqlite_provider)
+        manager = SQLiteManager(db_path, mock_sqlite_provider, mock_file_provider)
         
         # Verify migration was executed
         mock_conn.executescript.assert_called_once_with("CREATE TABLE test (id INTEGER);")
@@ -93,7 +106,7 @@ class TestSQLiteManager:
                 break
         assert version_insert_call is not None
     
-    def test_get_connection_context_manager(self, mock_sqlite_provider, temp_dir):
+    def test_get_connection_context_manager(self, mock_sqlite_provider, mock_file_provider, temp_dir):
         """Test get_connection context manager behavior."""
         db_path = f"{temp_dir}/test.db"
         mock_conn = Mock()
@@ -102,7 +115,7 @@ class TestSQLiteManager:
         mock_conn.execute.return_value = mock_cursor
         mock_sqlite_provider.connect.return_value = mock_conn
         
-        manager = SQLiteManager(db_path, mock_sqlite_provider)
+        manager = SQLiteManager(db_path, mock_sqlite_provider, mock_file_provider)
         
         # Reset mock to test get_connection behavior specifically
         mock_conn.reset_mock()
@@ -116,7 +129,7 @@ class TestSQLiteManager:
         mock_conn.commit.assert_called()
         mock_conn.close.assert_called()
     
-    def test_get_connection_rollback_on_error(self, mock_sqlite_provider, temp_dir):
+    def test_get_connection_rollback_on_error(self, mock_sqlite_provider, mock_file_provider, temp_dir):
         """Test get_connection rolls back on error."""
         db_path = f"{temp_dir}/test.db"
         mock_conn = Mock()
@@ -125,7 +138,7 @@ class TestSQLiteManager:
         mock_conn.execute.return_value = mock_cursor
         mock_sqlite_provider.connect.return_value = mock_conn
         
-        manager = SQLiteManager(db_path, mock_sqlite_provider)
+        manager = SQLiteManager(db_path, mock_sqlite_provider, mock_file_provider)
         
         # Reset mock to test get_connection behavior specifically
         mock_conn.reset_mock()
@@ -139,7 +152,7 @@ class TestSQLiteManager:
         mock_conn.rollback.assert_called()
         mock_conn.close.assert_called()
     
-    def test_execute_query(self, mock_sqlite_provider, temp_dir):
+    def test_execute_query(self, mock_sqlite_provider, mock_file_provider, temp_dir):
         """Test execute_query method."""
         db_path = f"{temp_dir}/test.db"
         mock_conn = Mock()
@@ -166,13 +179,13 @@ class TestSQLiteManager:
         mock_conn.execute.side_effect = execute_side_effect
         mock_sqlite_provider.connect.return_value = mock_conn
         
-        manager = SQLiteManager(db_path, mock_sqlite_provider)
+        manager = SQLiteManager(db_path, mock_sqlite_provider, mock_file_provider)
         
         result = manager.execute_query("SELECT * FROM test WHERE id > ?", (0,))
         
         assert result == [mock_row1, mock_row2]
     
-    def test_execute_command(self, mock_sqlite_provider, temp_dir):
+    def test_execute_command(self, mock_sqlite_provider, mock_file_provider, temp_dir):
         """Test execute_command method."""
         db_path = f"{temp_dir}/test.db"
         mock_conn = Mock()
@@ -197,13 +210,13 @@ class TestSQLiteManager:
         mock_conn.execute.side_effect = execute_side_effect
         mock_sqlite_provider.connect.return_value = mock_conn
         
-        manager = SQLiteManager(db_path, mock_sqlite_provider)
+        manager = SQLiteManager(db_path, mock_sqlite_provider, mock_file_provider)
         
         affected = manager.execute_command("UPDATE test SET name = ? WHERE id = ?", ("updated", 1))
         
         assert affected == 1
     
-    def test_get_last_insert_id(self, mock_sqlite_provider, temp_dir):
+    def test_get_last_insert_id(self, mock_sqlite_provider, mock_file_provider, temp_dir):
         """Test get_last_insert_id method."""
         db_path = f"{temp_dir}/test.db"
         mock_conn = Mock()
@@ -228,13 +241,13 @@ class TestSQLiteManager:
         mock_conn.execute.side_effect = execute_side_effect
         mock_sqlite_provider.connect.return_value = mock_conn
         
-        manager = SQLiteManager(db_path, mock_sqlite_provider)
+        manager = SQLiteManager(db_path, mock_sqlite_provider, mock_file_provider)
         
         last_id = manager.get_last_insert_id("test_table")
         
         assert last_id == 42
     
-    def test_get_last_insert_id_returns_none_for_zero(self, mock_sqlite_provider, temp_dir):
+    def test_get_last_insert_id_returns_none_for_zero(self, mock_sqlite_provider, mock_file_provider, temp_dir):
         """Test get_last_insert_id returns None when id is 0."""
         db_path = f"{temp_dir}/test.db"
         mock_conn = Mock()
@@ -259,13 +272,13 @@ class TestSQLiteManager:
         mock_conn.execute.side_effect = execute_side_effect
         mock_sqlite_provider.connect.return_value = mock_conn
         
-        manager = SQLiteManager(db_path, mock_sqlite_provider)
+        manager = SQLiteManager(db_path, mock_sqlite_provider, mock_file_provider)
         
         last_id = manager.get_last_insert_id("test_table")
         
         assert last_id is None
     
-    def test_row_factory_setting(self, mock_sqlite_provider, temp_dir):
+    def test_row_factory_setting(self, mock_sqlite_provider, mock_file_provider, temp_dir):
         """Test row_factory is set if supported by provider."""
         db_path = f"{temp_dir}/test.db"
         mock_conn = Mock()
@@ -278,7 +291,7 @@ class TestSQLiteManager:
         
         mock_sqlite_provider.connect.return_value = mock_conn
         
-        manager = SQLiteManager(db_path, mock_sqlite_provider)
+        manager = SQLiteManager(db_path, mock_sqlite_provider, mock_file_provider)
         
         # Reset mock to test get_connection behavior specifically
         mock_conn.row_factory = None  # Reset row_factory

@@ -21,19 +21,23 @@ class FastSQLiteManager:
     _connection_lock = threading.RLock()
     _migration_applied = False
 
-    def __init__(self, db_path: str, skip_migrations: bool, sqlite_provider):
+    def __init__(self, db_path: str, skip_migrations: bool, sqlite_provider, file_provider):
         """Initialize Fast SQLite manager.
 
         Args:
             db_path: Path to SQLite database or ":memory:" for in-memory
             skip_migrations: Skip database migrations if True
             sqlite_provider: SQLite操作プロバイダー
+            file_provider: ファイル操作プロバイダー
         """
         self.db_path = db_path
         self.skip_migrations = skip_migrations
         if sqlite_provider is None:
             raise ValueError("sqlite_provider is required and cannot be None")
+        if file_provider is None:
+            raise ValueError("file_provider is required and cannot be None")
         self._sqlite_provider = sqlite_provider
+        self._file_provider = file_provider
         self._is_memory_db = db_path == ":memory:"
         self._initialize_setup()
 
@@ -43,7 +47,7 @@ class FastSQLiteManager:
         if not self._is_memory_db:
             # For file databases, ensure directory exists
             db_path_obj = Path(self.db_path)
-            db_path_obj.parent.mkdir(parents=True, exist_ok=True)
+            self._file_provider.create_directory(str(db_path_obj.parent), parents=True, exist_ok=True)
 
         self._initialize_database()
 

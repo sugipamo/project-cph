@@ -23,20 +23,24 @@ class TestFastSQLiteManager:
         return provider
 
     @pytest.fixture
-    def manager(self, mock_sqlite_provider):
+    def mock_file_provider(self):
+        return Mock()
+
+    @pytest.fixture
+    def manager(self, mock_sqlite_provider, mock_file_provider):
         # Reset class-level state
         FastSQLiteManager._shared_connection = None
         FastSQLiteManager._migration_applied = False
-        return FastSQLiteManager(":memory:", skip_migrations=True, sqlite_provider=mock_sqlite_provider)
+        return FastSQLiteManager(":memory:", skip_migrations=True, sqlite_provider=mock_sqlite_provider, file_provider=mock_file_provider)
 
-    def test_init(self, mock_sqlite_provider):
-        manager = FastSQLiteManager(":memory:", skip_migrations=True, sqlite_provider=mock_sqlite_provider)
+    def test_init(self, mock_sqlite_provider, mock_file_provider):
+        manager = FastSQLiteManager(":memory:", skip_migrations=True, sqlite_provider=mock_sqlite_provider, file_provider=mock_file_provider)
         assert manager._sqlite_provider == mock_sqlite_provider
         assert manager.db_path == ":memory:"
         assert manager.skip_migrations is True
         assert manager._is_memory_db is True
 
-    def test_init_file_db(self, mock_sqlite_provider):
+    def test_init_file_db(self, mock_sqlite_provider, mock_file_provider):
         # Mock connection for validation
         mock_conn = Mock(spec=sqlite3.Connection)
         mock_cursor = Mock()
@@ -51,7 +55,7 @@ class TestFastSQLiteManager:
         mock_sqlite_provider.connect.return_value = mock_conn
         
         with patch('pathlib.Path.mkdir'):
-            manager = FastSQLiteManager("/tmp/test.db", skip_migrations=False, sqlite_provider=mock_sqlite_provider)
+            manager = FastSQLiteManager("/tmp/test.db", skip_migrations=False, sqlite_provider=mock_sqlite_provider, file_provider=mock_file_provider)
             assert manager.db_path == "/tmp/test.db"
             assert manager._is_memory_db is False
 
@@ -152,7 +156,7 @@ class TestFastSQLiteManager:
         assert FastSQLiteManager._shared_connection is None
         assert FastSQLiteManager._migration_applied is False
 
-    def test_run_migrations(self, mock_sqlite_provider):
+    def test_run_migrations(self, mock_sqlite_provider, mock_file_provider):
         # Mock connection for file database
         mock_conn = Mock(spec=sqlite3.Connection)
         mock_cursor = Mock()
@@ -189,7 +193,7 @@ class TestFastSQLiteManager:
                 mock_glob.return_value = [mock_migration]
                 
                 with patch('pathlib.Path.mkdir'):
-                    manager = FastSQLiteManager("/tmp/test.db", skip_migrations=False, sqlite_provider=mock_sqlite_provider)
+                    manager = FastSQLiteManager("/tmp/test.db", skip_migrations=False, sqlite_provider=mock_sqlite_provider, file_provider=mock_file_provider)
                 
                 # Should execute migration
                 mock_conn.executescript.assert_called()

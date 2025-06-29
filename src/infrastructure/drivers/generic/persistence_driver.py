@@ -124,7 +124,8 @@ class SQLitePersistenceDriver(PersistenceDriver):
     def _initialize_database(self) -> None:
         """Initialize database and run migrations."""
         from src.infrastructure.sqlite_provider import SystemSQLiteProvider
-        self._sqlite_manager = SQLiteManager(self.db_path, SystemSQLiteProvider())
+        from src.infrastructure.file_provider import SystemFileProvider
+        self._sqlite_manager = SQLiteManager(self.db_path, SystemSQLiteProvider(), SystemFileProvider())
 
     def get_connection(self) -> Any:
         """Get a database connection."""

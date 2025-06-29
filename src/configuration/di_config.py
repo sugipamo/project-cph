@@ -24,6 +24,7 @@ from src.infrastructure.json_provider import MockJsonProvider, SystemJsonProvide
 from src.infrastructure.os_provider import MockOsProvider, SystemOsProvider
 from src.infrastructure.drivers.generic.unified_driver import UnifiedDriver
 from src.infrastructure.sqlite_provider import MockSQLiteProvider, SystemSQLiteProvider
+from src.infrastructure.file_provider import MockFileProvider, SystemFileProvider
 from src.operations.requests.request_factory import RequestFactory
 # Fix imports - these are not in operations.results
 from src.logging.application_logger_adapter import ApplicationLoggerAdapter
@@ -108,9 +109,10 @@ def _create_shell_python_driver(container: Any) -> Any:
 def _create_sqlite_manager(container: Any) -> Any:
     """Lazy factory for SQLite manager (legacy)."""
     sqlite_provider = container.resolve(DIKey.SQLITE_PROVIDER)
+    file_provider = container.resolve(DIKey.FILE_PROVIDER)
     # Use the existing database path - no defaults allowed
     db_path = "./cph_history.db"
-    return SQLiteManager(db_path=db_path, sqlite_provider=sqlite_provider)
+    return SQLiteManager(db_path=db_path, sqlite_provider=sqlite_provider, file_provider=file_provider)
 
 
 def _create_operation_repository(container: Any) -> Any:
@@ -360,6 +362,16 @@ def _create_mock_sqlite_provider() -> Any:
     return MockSQLiteProvider()
 
 
+def _create_file_provider() -> Any:
+    """Lazy factory for file provider."""
+    return SystemFileProvider()
+
+
+def _create_mock_file_provider() -> Any:
+    """Lazy factory for mock file provider."""
+    return MockFileProvider()
+
+
 def _create_configuration_repository(container: Any) -> Any:
     """Lazy factory for configuration repository."""
     json_provider = container.resolve(DIKey.JSON_PROVIDER)
@@ -406,6 +418,7 @@ def configure_production_dependencies(container: DIContainer) -> None:
     container.register(DIKey.SQLITE_PROVIDER, _create_sqlite_provider)
     container.register(DIKey.OS_PROVIDER, _create_os_provider)
     container.register(DIKey.SYS_PROVIDER, lambda: _create_sys_provider(container))
+    container.register(DIKey.FILE_PROVIDER, _create_file_provider)
     container.register(DIKey.CONFIGURATION_REPOSITORY, lambda: _create_configuration_repository(container))
 
     # Register core drivers
@@ -480,6 +493,7 @@ def _register_mock_providers(container: DIContainer) -> None:
     container.register(DIKey.SQLITE_PROVIDER, _create_mock_sqlite_provider)
     container.register(DIKey.OS_PROVIDER, _create_mock_os_provider)
     container.register(DIKey.SYS_PROVIDER, _create_mock_sys_provider)
+    container.register(DIKey.FILE_PROVIDER, _create_mock_file_provider)
     container.register(DIKey.CONFIGURATION_REPOSITORY, lambda: _create_configuration_repository(container))
 
 def _register_mock_drivers(container: DIContainer) -> None:
@@ -506,7 +520,8 @@ def _register_test_persistence(container: DIContainer) -> None:
     """Register test persistence layer."""
     def _create_test_sqlite_manager():
         sqlite_provider = container.resolve(DIKey.SQLITE_PROVIDER)
-        return FastSQLiteManager(":memory:", skip_migrations=False, sqlite_provider=sqlite_provider)
+        file_provider = container.resolve(DIKey.FILE_PROVIDER)
+        return FastSQLiteManager(":memory:", skip_migrations=False, sqlite_provider=sqlite_provider, file_provider=file_provider)
 
     container.register(DIKey.SQLITE_MANAGER, lambda: _create_test_sqlite_manager())
     container.register(DIKey.OPERATION_REPOSITORY, lambda: _create_operation_repository(container))

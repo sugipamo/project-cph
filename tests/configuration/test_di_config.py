@@ -123,11 +123,14 @@ class TestFactoryFunctions:
         mock_connection.__exit__ = Mock(return_value=None)
         
         mock_provider.connect.return_value = mock_connection
-        container.resolve.return_value = mock_provider
+        mock_file_provider = Mock()
+        container.resolve.side_effect = lambda key: mock_provider if key == DIKey.SQLITE_PROVIDER else mock_file_provider
         
         manager = _create_sqlite_manager(container)
         
-        container.resolve.assert_called_once_with(DIKey.SQLITE_PROVIDER)
+        assert container.resolve.call_count == 2
+        container.resolve.assert_any_call(DIKey.SQLITE_PROVIDER)
+        container.resolve.assert_any_call(DIKey.FILE_PROVIDER)
 
     def test_create_operation_repository(self):
         """Test operation repository factory."""

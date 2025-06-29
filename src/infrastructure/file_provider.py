@@ -27,6 +27,26 @@ class FileProvider(ABC):
         """ディレクトリ内容を一覧"""
         pass
 
+    @abstractmethod
+    def create_directory(self, dir_path: str, parents: bool, exist_ok: bool) -> None:
+        """ディレクトリを作成"""
+        pass
+
+    @abstractmethod
+    def path_exists(self, path: str) -> bool:
+        """パス（ファイルまたはディレクトリ）の存在チェック"""
+        pass
+
+    @abstractmethod
+    def is_directory(self, path: str) -> bool:
+        """パスがディレクトリかチェック"""
+        pass
+
+    @abstractmethod
+    def is_file(self, path: str) -> bool:
+        """パスがファイルかチェック"""
+        pass
+
 
 class SystemFileProvider(FileProvider):
     """システムファイル操作の実装 - 副作用はここに集約"""
@@ -55,6 +75,22 @@ class SystemFileProvider(FileProvider):
         except (OSError, PermissionError) as e:
             # 互換性維持のためのコメント: 権限エラーやOSエラーを明示的に処理
             raise RuntimeError(f"Failed to list directory '{dir_path}': {e}") from e
+
+    def create_directory(self, dir_path: str, parents: bool, exist_ok: bool) -> None:
+        """ディレクトリを作成（副作用）"""
+        Path(dir_path).mkdir(parents=parents, exist_ok=exist_ok)
+
+    def path_exists(self, path: str) -> bool:
+        """パスの存在チェック（副作用）"""
+        return Path(path).exists()
+
+    def is_directory(self, path: str) -> bool:
+        """ディレクトリチェック（副作用）"""
+        return Path(path).is_dir()
+
+    def is_file(self, path: str) -> bool:
+        """ファイルチェック（副作用）"""
+        return Path(path).is_file()
 
 
 class MockFileProvider(FileProvider):
@@ -85,6 +121,32 @@ class MockFileProvider(FileProvider):
             for path in self._files
             if path.startswith(dir_path) and '/' not in path[len(dir_path):]
         ]
+
+    def create_directory(self, dir_path: str, parents: bool, exist_ok: bool) -> None:
+        """モックディレクトリ作成（副作用なし）"""
+        if not exist_ok and self.is_directory(dir_path):
+            raise FileExistsError(f"Directory already exists: {dir_path}")
+        # モックでは実際にディレクトリを作成せず、記録のみ
+        self._directories = getattr(self, '_directories', set())
+        self._directories.add(dir_path)
+        if parents:
+            # 親ディレクトリも追加
+            path = Path(dir_path)
+            for parent in path.parents:
+                if str(parent) != '.':
+                    self._directories.add(str(parent))
+
+    def path_exists(self, path: str) -> bool:
+        """モックパス存在チェック（副作用なし）"""
+        return path in self._files or path in getattr(self, '_directories', set())
+
+    def is_directory(self, path: str) -> bool:
+        """モックディレクトリチェック（副作用なし）"""
+        return path in getattr(self, '_directories', set())
+
+    def is_file(self, path: str) -> bool:
+        """モックファイルチェック（副作用なし）"""
+        return path in self._files
 
     def add_file(self, file_path: str, content: str) -> None:
         """テスト用ファイル追加"""
