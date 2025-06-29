@@ -4,7 +4,7 @@ from unittest.mock import Mock, patch
 from datetime import datetime
 
 from src.application.mock_output_manager import MockOutputManager
-from src.utils.types import LogEntry, LogLevel
+from src.logging.types import LogEntry, LogLevel
 from src.utils.format_info import FormatInfo
 
 
@@ -115,7 +115,7 @@ class TestMockOutputManager:
         manager = MockOutputManager("test", LogLevel.DEBUG)
         
         # Create entries with controlled timestamps
-        from src.utils.types import LogEntry
+        from src.logging.types import LogEntry
         import datetime as dt
         
         # Add entries with specific timestamps in order
@@ -204,7 +204,7 @@ class TestMockOutputManager:
         manager = MockOutputManager("test", LogLevel.INFO)
         
         # Create entries with controlled timestamps
-        from src.utils.types import LogEntry
+        from src.logging.types import LogEntry
         import datetime as dt
         
         # Add entries manually with specific timestamps

@@ -35,7 +35,7 @@ from src.infrastructure.drivers.generic.persistence_driver import SQLitePersiste
 from src.configuration.system_config_loader import SystemConfigLoader
 from src.logging.unified_logger import UnifiedLogger
 from src.utils.sys_provider import MockSysProvider, SystemSysProvider
-from src.utils.types import LogLevel
+from src.logging.types import LogLevel
 from src_check.mocks.drivers.mock_docker_driver import MockDockerDriver
 from src_check.mocks.drivers.mock_file_driver import MockFileDriver
 from src_check.mocks.drivers.mock_python_driver import MockPythonDriver

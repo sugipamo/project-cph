@@ -6,7 +6,7 @@ from typing import Any, ClassVar, Optional
 from src.infrastructure.di_container import DIContainer
 from src.operations.interfaces.utility_interfaces import LoggerInterface, OutputManagerInterface
 from src.utils.format_info import FormatInfo
-from src.utils.types import LogLevel
+from src.logging.types import LogLevel
 
 
 class UnifiedLogger(LoggerInterface):

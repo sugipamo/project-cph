@@ -56,35 +56,39 @@ class TestRuntimeConfigOverlay:
         overlay = RuntimeConfigOverlay()
         overlay.set_overlay("key", "value")
         
-        assert overlay.get_overlay("key", "default") == "value"
+        assert overlay.get_overlay("key") == "value"
     
     def test_get_overlay_nested(self):
         """Test getting a nested overlay value"""
         overlay = RuntimeConfigOverlay()
         overlay.set_overlay("parent.child.key", "value")
         
-        assert overlay.get_overlay("parent.child.key", "default") == "value"
+        assert overlay.get_overlay("parent.child.key") == "value"
     
     def test_get_overlay_not_exists(self):
-        """Test getting non-existent overlay returns default"""
+        """Test getting non-existent overlay raises KeyError"""
         overlay = RuntimeConfigOverlay()
         overlay.set_overlay("existing", "value")
         
-        assert overlay.get_overlay("nonexistent", "default") == "default"
-        assert overlay.get_overlay("existing.nested", "default") == "default"
+        with pytest.raises(KeyError, match="Overlay path 'nonexistent' not found"):
+            overlay.get_overlay("nonexistent")
+        with pytest.raises(KeyError, match="Overlay path 'existing.nested' not found"):
+            overlay.get_overlay("existing.nested")
     
     def test_get_overlay_inactive(self):
-        """Test getting overlay when inactive returns default"""
+        """Test getting overlay when inactive raises RuntimeError"""
         overlay = RuntimeConfigOverlay()
-        assert overlay.get_overlay("any.key", "default") == "default"
+        with pytest.raises(RuntimeError, match="Overlay is not active"):
+            overlay.get_overlay("any.key")
     
     def test_get_overlay_type_error(self):
-        """Test getting overlay handles TypeError"""
+        """Test getting overlay raises KeyError on type mismatch"""
         overlay = RuntimeConfigOverlay()
         overlay.set_overlay("scalar", "value")
         
-        # Trying to access scalar value as dict should return default
-        assert overlay.get_overlay("scalar.nested", "default") == "default"
+        # Trying to access scalar value as dict should raise KeyError
+        with pytest.raises(KeyError, match="Overlay path 'scalar.nested' not found"):
+            overlay.get_overlay("scalar.nested")
     
     def test_has_overlay_exists(self):
         """Test checking if overlay exists"""
@@ -145,9 +149,9 @@ class TestDebugConfigProvider:
         
         provider.enable_debug_mode()
         
-        assert overlay.get_overlay("logging_config.default_level", "INFO") == "DEBUG"
-        assert overlay.get_overlay("output.show_step_details", False) is True
-        assert overlay.get_overlay("debug", False) is True
+        assert overlay.get_overlay("logging_config.default_level") == "DEBUG"
+        assert overlay.get_overlay("output.show_step_details") is True
+        assert overlay.get_overlay("debug") is True
     
     def test_disable_debug_mode(self):
         """Test disabling debug mode"""
@@ -166,37 +170,42 @@ class TestDebugConfigProvider:
         provider = DebugConfigProvider(overlay)
         
         provider.enable_debug_mode()
-        assert provider.get_log_level("INFO") == "DEBUG"
+        assert provider.get_log_level() == "DEBUG"
     
     def test_get_log_level_without_overlay(self):
-        """Test getting log level without overlay"""
+        """Test getting log level without overlay raises RuntimeError"""
         overlay = RuntimeConfigOverlay()
         provider = DebugConfigProvider(overlay)
         
-        assert provider.get_log_level("INFO") == "INFO"
+        with pytest.raises(RuntimeError, match="Overlay is not active"):
+            provider.get_log_level()
     
     def test_is_debug_enabled(self):
         """Test checking if debug is enabled"""
         overlay = RuntimeConfigOverlay()
         provider = DebugConfigProvider(overlay)
         
-        assert provider.is_debug_enabled() is False
+        with pytest.raises(RuntimeError, match="Overlay is not active"):
+            provider.is_debug_enabled()
         
         provider.enable_debug_mode()
         assert provider.is_debug_enabled() is True
         
         provider.disable_debug_mode()
-        assert provider.is_debug_enabled() is False
+        with pytest.raises(RuntimeError, match="Overlay is not active"):
+            provider.is_debug_enabled()
     
     def test_should_show_step_details(self):
         """Test checking if step details should be shown"""
         overlay = RuntimeConfigOverlay()
         provider = DebugConfigProvider(overlay)
         
-        assert provider.should_show_step_details() is False
+        with pytest.raises(RuntimeError, match="Overlay is not active"):
+            provider.should_show_step_details()
         
         provider.enable_debug_mode()
         assert provider.should_show_step_details() is True
         
         provider.disable_debug_mode()
-        assert provider.should_show_step_details() is False
+        with pytest.raises(RuntimeError, match="Overlay is not active"):
+            provider.should_show_step_details()

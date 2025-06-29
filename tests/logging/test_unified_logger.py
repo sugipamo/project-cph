@@ -4,7 +4,7 @@ from datetime import datetime
 import logging
 
 from src.logging.unified_logger import UnifiedLogger
-from src.utils.types import LogLevel
+from src.logging.types import LogLevel
 
 
 class TestUnifiedLogger:

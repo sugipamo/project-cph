@@ -1,5 +1,4 @@
 """Repository for managing system configuration in SQLite."""
-import contextlib
 import json
 from typing import Any, Dict, List, Optional
 
@@ -147,10 +146,7 @@ class SystemConfigRepository(DatabaseRepositoryFoundation):
             row = cursor.fetchone()
 
         if row and row[0] is not None:
-            try:
-                return json.loads(row[0])
-            except json.JSONDecodeError:
-                return row[0]
+            return json.loads(row[0])
         return None
 
     def get_config_with_metadata(self, key: str) -> Optional[Dict[str, Any]]:
@@ -165,7 +161,7 @@ class SystemConfigRepository(DatabaseRepositoryFoundation):
 
         if row:
             result = dict(row)
-            with contextlib.suppress(json.JSONDecodeError):
+            if result['config_value'] is not None:
                 result['config_value'] = json.loads(result['config_value'])
             return result
         return None
@@ -183,7 +179,7 @@ class SystemConfigRepository(DatabaseRepositoryFoundation):
             results = []
             for row in cursor.fetchall():
                 config = dict(row)
-                with contextlib.suppress(json.JSONDecodeError):
+                if config['config_value'] is not None:
                     config['config_value'] = json.loads(config['config_value'])
                 results.append(config)
 
@@ -200,10 +196,10 @@ class SystemConfigRepository(DatabaseRepositoryFoundation):
 
             configs = {}
             for key, value in cursor.fetchall():
-                try:
+                if value is not None:
                     configs[key] = json.loads(value)
-                except json.JSONDecodeError:
-                    configs[key] = value
+                else:
+                    configs[key] = None
 
         return configs
 
@@ -219,7 +215,7 @@ class SystemConfigRepository(DatabaseRepositoryFoundation):
             results = []
             for row in cursor.fetchall():
                 config = dict(row)
-                with contextlib.suppress(json.JSONDecodeError):
+                if config['config_value'] is not None:
                     config['config_value'] = json.loads(config['config_value'])
                 results.append(config)
 
@@ -253,10 +249,10 @@ class SystemConfigRepository(DatabaseRepositoryFoundation):
 
             configs = {}
             for key, value in cursor.fetchall():
-                try:
+                if value is not None:
                     configs[key] = json.loads(value)
-                except json.JSONDecodeError:
-                    configs[key] = value
+                else:
+                    configs[key] = None
 
             return configs
 
@@ -284,10 +280,7 @@ class SystemConfigRepository(DatabaseRepositoryFoundation):
                 user_specified = bool(row[2])
 
                 if value is not None:
-                    try:
-                        result['values'][key] = json.loads(value)
-                    except json.JSONDecodeError:
-                        result['values'][key] = value
+                    result['values'][key] = json.loads(value)
                 else:
                     result['values'][key] = None
 
@@ -310,8 +303,7 @@ class SystemConfigRepository(DatabaseRepositoryFoundation):
             for row in cursor.fetchall():
                 config = dict(row)
                 if config['config_value'] is not None:
-                    with contextlib.suppress(json.JSONDecodeError):
-                        config['config_value'] = json.loads(config['config_value'])
+                    config['config_value'] = json.loads(config['config_value'])
                 results.append(config)
 
         return results

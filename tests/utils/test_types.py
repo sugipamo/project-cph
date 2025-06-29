@@ -3,7 +3,7 @@ from datetime import datetime
 import pytest
 from unittest.mock import Mock
 
-from src.utils.types import LogLevel, LogEntry
+from src.logging.types import LogLevel, LogEntry
 from src.utils.format_info import FormatInfo
 
 
@@ -98,7 +98,7 @@ class TestLogEntry:
 
     def test_log_level_backward_compatibility(self):
         """Test that LogLevel is properly re-exported."""
-        from src.utils.types import LogLevel as TypesLogLevel
+        from src.logging.types import LogLevel as TypesLogLevel
         from src.logging.log_types import LogLevel as BaseLogLevel
         
         # They should be the same enum

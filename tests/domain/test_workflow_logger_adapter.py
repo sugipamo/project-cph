@@ -2,7 +2,7 @@
 import pytest
 from unittest.mock import Mock, MagicMock
 from src.domain.workflow_logger_adapter import WorkflowLoggerAdapter
-from src.utils.types import LogLevel
+from src.logging.types import LogLevel
 from src.utils.format_info import FormatInfo
 
 

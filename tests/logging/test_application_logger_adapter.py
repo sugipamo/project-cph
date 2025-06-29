@@ -2,7 +2,7 @@
 import pytest
 from unittest.mock import Mock, MagicMock, patch
 from src.logging.application_logger_adapter import ApplicationLoggerAdapter
-from src.utils.types import LogLevel
+from src.logging.types import LogLevel
 from src.utils.format_info import FormatInfo
 
 

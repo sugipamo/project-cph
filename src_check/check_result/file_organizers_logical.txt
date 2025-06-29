@@ -1,23 +1,9 @@
 === file_organizers_logical ===
 
-失敗箇所: 4件
-----------------------------------------
-1. /home/cphelper/project-cph/src/utils/log_format_type.py:0
-2. /home/cphelper/project-cph/src/utils/log_types.py:0
-3. /home/cphelper/project-cph/src/infrastructure/di_container_adapter.py:0
-4. /home/cphelper/project-cph/src/domain/__init__.py:0
+失敗箇所: なし
 
 修正方針:
 --------------------
-4個のファイルを論理的なフォルダ構造に再配置します。
-影響を受けるインポート: 0箇所
+ファイル構造は既に論理的に整理されています。
 
-修正例:
---------------------
-# 整理後:
-# models/
-# repositories/
-# services/
-# utils/
-
-実行時刻: 2025-06-29 02:14:51
+実行時刻: 2025-06-29 13:02:59

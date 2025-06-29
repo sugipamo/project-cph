@@ -344,7 +344,7 @@ class TestMainIntegration:
                 from src.presentation.main import main
                 
                 # Call main with test arguments
-                result = main(['test', 'abc', 'a'], services[DIKey.SYS_PROVIDER].exit, infrastructure)
+                result = main(['test', 'abc', 'a'], services[DIKey.SYS_PROVIDER].exit, infrastructure, services[DIKey.CONFIG_MANAGER])
                 
                 # Verify the exit code is returned
                 assert result == expected_exit_code
@@ -466,13 +466,13 @@ class TestMainIntegration:
             from src.presentation.cli_app import main
             
             # Call main with test arguments
-            result = main(['test', 'abc', 'a'], services[DIKey.SYS_PROVIDER].exit, infrastructure)
+            result = main(['test', 'abc', 'a'], services[DIKey.SYS_PROVIDER].exit, infrastructure, services[DIKey.CONFIG_MANAGER])
             
             # Verify CLI app was created and run
             mock_cli_app_class.assert_called_once_with(
                 infrastructure, 
                 services[DIKey.APPLICATION_LOGGER],
-                None  # config_manager is optional
+                services[DIKey.CONFIG_MANAGER]
             )
             cli_app.run_cli_application.assert_called_once_with(['test', 'abc', 'a'])
             

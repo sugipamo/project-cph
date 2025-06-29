@@ -3,7 +3,7 @@ import contextlib
 import uuid
 from typing import Any, Optional
 
-from src.utils.types import LogLevel
+from src.logging.types import LogLevel
 
 from src.infrastructure.di_container import DIContainer
 from src.operations.interfaces.utility_interfaces import LoggerInterface, OutputManagerInterface

@@ -244,7 +244,7 @@ class MinimalCLIApp:
         return None
 
 
-def main(argv: Optional[list[str]], exit_func, infrastructure, config_manager=None) -> int:
+def main(argv: Optional[list[str]], exit_func, infrastructure, config_manager) -> int:
     """Main entry point for minimal CLI
 
     Args:

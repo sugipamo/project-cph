@@ -31,28 +31,30 @@ class RuntimeConfigOverlay:
         current[path_parts[-1]] = value
         self._active = True
 
-    def get_overlay(self, config_path: str, default_value: Any) -> Any:
+    def get_overlay(self, config_path: str) -> Any:
         """オーバーレイ設定を取得
 
         Args:
             config_path: 設定パス
-            default_value: デフォルト値
 
         Returns:
-            オーバーレイ設定値またはデフォルト値
+            オーバーレイ設定値
+
+        Raises:
+            KeyError: 設定パスが存在しない場合
+            RuntimeError: オーバーレイが非アクティブな場合
         """
         if not self._active:
-            return default_value
+            raise RuntimeError("Overlay is not active")
 
         path_parts = config_path.split('.')
         current = self._overlay_config
 
-        try:
-            for part in path_parts:
-                current = current[part]
-            return current
-        except (KeyError, TypeError):
-            return default_value
+        for part in path_parts:
+            if not isinstance(current, dict) or part not in current:
+                raise KeyError(f"Overlay path '{config_path}' not found")
+            current = current[part]
+        return current
 
     def has_overlay(self, config_path: str) -> bool:
         """指定パスにオーバーレイが存在するかチェック
@@ -106,16 +108,14 @@ class DebugConfigProvider:
         """デバッグモードを無効化"""
         self.overlay.clear_overlay()
 
-    def get_log_level(self, default: str) -> str:
+    def get_log_level(self) -> str:
         """ログレベルを取得（オーバーレイ優先）"""
-        return self.overlay.get_overlay("logging_config.default_level", default)
+        return self.overlay.get_overlay("logging_config.default_level")
 
     def is_debug_enabled(self) -> bool:
         """デバッグモードが有効かチェック"""
-        debug_value = False  # 呼び出し元で値を用意
-        return self.overlay.get_overlay("debug", debug_value)
+        return self.overlay.get_overlay("debug")
 
     def should_show_step_details(self) -> bool:
         """ステップ詳細表示が有効かチェック"""
-        show_details_value = False  # 呼び出し元で値を用意
-        return self.overlay.get_overlay("output.show_step_details", show_details_value)
+        return self.overlay.get_overlay("output.show_step_details")

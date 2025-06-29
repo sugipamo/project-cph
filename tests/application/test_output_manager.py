@@ -5,7 +5,7 @@ from datetime import datetime
 from io import StringIO
 
 from src.application.output_manager import OutputManager
-from src.utils.types import LogEntry, LogLevel
+from src.logging.types import LogEntry, LogLevel
 from src.utils.format_info import FormatInfo
 
 
@@ -130,7 +130,7 @@ class TestOutputManager:
         manager = OutputManager("test", LogLevel.DEBUG)
         
         # Add entries with different timestamps
-        with patch('src.utils.types.datetime') as mock_datetime:
+        with patch('src.logging.types.datetime') as mock_datetime:
             mock_datetime.now.side_effect = [
                 datetime(2024, 1, 1, 10, 0, 0),
                 datetime(2024, 1, 1, 10, 0, 1),
@@ -213,7 +213,7 @@ class TestOutputManager:
 
     def test_output_sorted(self):
         """Test output_sorted functionality."""
-        from src.utils.types import LogEntry
+        from src.logging.types import LogEntry
         
         manager = OutputManager("test", LogLevel.INFO)
         

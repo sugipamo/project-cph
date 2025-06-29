@@ -58,5 +58,5 @@ if __name__ == "__main__":
 
     # Phase 7: アプリケーション実行（すべての依存性が解決済み）
     sys_provider = infrastructure.resolve(DIKey.SYS_PROVIDER)
-    exit_code = main(sys_provider.get_argv()[1:], sys_provider.exit, infrastructure)
+    exit_code = main(sys_provider.get_argv()[1:], sys_provider.exit, infrastructure, config_manager)
     sys_provider.exit(exit_code)

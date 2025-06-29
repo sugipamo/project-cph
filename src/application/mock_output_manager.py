@@ -4,7 +4,7 @@ from typing import List, Optional, Union
 # Infrastructure dependency removed - config_manager can be injected if needed
 from src.operations.interfaces.utility_interfaces import OutputManagerInterface
 from src.utils.format_info import FormatInfo
-from src.utils.types import LogEntry, LogLevel
+from src.logging.types import LogEntry, LogLevel
 
 
 class MockOutputManager(OutputManagerInterface):

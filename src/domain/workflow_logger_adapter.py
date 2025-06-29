@@ -3,7 +3,7 @@ from typing import Any, ClassVar, Optional, Protocol
 
 from src.operations.interfaces.utility_interfaces import OutputManagerInterface
 from src.utils.format_info import FormatInfo
-from src.utils.types import LogLevel
+from src.logging.types import LogLevel
 
 
 class ConfigManagerInterface(Protocol):

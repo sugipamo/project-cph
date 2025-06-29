@@ -3,7 +3,7 @@ import pytest
 from unittest.mock import Mock, patch, MagicMock
 
 from src.infrastructure.di_container import DIContainer, DIKey
-from src.utils.types import LogLevel
+from src.logging.types import LogLevel
 
 
 class TestDIConfigBasics:
