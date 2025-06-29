@@ -86,8 +86,10 @@ class TestShellRequest:
     def test_execute_core_with_retry(self, error_converter, result_factory):
         """Test shell execution with retry."""
         mock_driver = Mock()
+        # First call raises an OSError (which is caught in the try-except block)
+        # Second call returns success
         mock_driver.execute_command.side_effect = [
-            Exception("First failure"),
+            OSError("First failure"),
             {'stdout': "output", 'stderr': "", 'returncode': 0, 'success': True}
         ]
         

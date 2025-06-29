@@ -59,24 +59,8 @@ class ContestManager:
     def logger(self):
         """Lazy load logger."""
         if self._logger is None:
-            try:
-                self._logger = self.container.resolve(DIKey.UNIFIED_LOGGER)
-            except ValueError:
-
-                class DummyLogger:
-
-                    def warning(self, msg):
-                        pass
-
-                    def error(self, msg):
-                        pass
-
-                    def info(self, msg):
-                        pass
-
-                    def debug(self, msg):
-                        pass
-                self._logger = DummyLogger()
+            # Logger is required - fail fast if not available
+            self._logger = self.container.resolve(DIKey.UNIFIED_LOGGER)
         return self._logger
 
     @property
@@ -176,176 +160,146 @@ class ContestManager:
         problem = current_state['problem_name']
         if not all([language, contest, problem]):
             return False
-        try:
-            shared_config = self.env_json['shared']
-            paths = shared_config['paths']
-            contest_current_path = paths['contest_current_path']
-            contest_stock_path_template = paths['contest_stock_path']
-            contest_stock_path = contest_stock_path_template.format(language_name=language, contest_name=contest, problem_name=problem)
-            if not self._directory_has_content(contest_current_path):
-                return True
-            self._ensure_directory_exists(contest_stock_path)
-            success = self._move_directory_contents(contest_current_path, contest_stock_path)
-            return success
-        except Exception as e:
-            self.logger.error(f'Error during backup: {e}')
-            raise RuntimeError(f'Backup operation failed: {e}') from e
+        shared_config = self.env_json['shared']
+        paths = shared_config['paths']
+        contest_current_path = paths['contest_current_path']
+        contest_stock_path_template = paths['contest_stock_path']
+        contest_stock_path = contest_stock_path_template.format(language_name=language, contest_name=contest, problem_name=problem)
+        if not self._directory_has_content(contest_current_path):
+            return True
+        self._ensure_directory_exists(contest_stock_path)
+        success = self._move_directory_contents(contest_current_path, contest_stock_path)
+        return success
 
     def _directory_has_content(self, directory_path: str) -> bool:
         """Check if directory exists and has content."""
-        try:
-            time_ops = SystemTimeProvider()
-            req = FileRequest(operation=FileOpType.EXISTS, path=directory_path, time_ops=time_ops, content=None, destination=None, debug_tag='check_directory_content', name='check_directory_exists')
-            result = req.execute_operation(driver=self.file_driver, logger=self.logger)
-            return result.exists
-        except Exception as e:
-            self.logger.debug(f'Exception checking directory content: {e}')
-            raise RuntimeError(f'Failed to check directory content: {e}') from e
+        time_ops = SystemTimeProvider()
+        req = FileRequest(operation=FileOpType.EXISTS, path=directory_path, time_ops=time_ops, content=None, destination=None, debug_tag='check_directory_content', name='check_directory_exists')
+        result = req.execute_operation(driver=self.file_driver, logger=self.logger)
+        return result.exists
 
     def _ensure_directory_exists(self, directory_path: str) -> bool:
         """Ensure directory exists, create if necessary."""
-        try:
-            time_ops = SystemTimeProvider()
-            req = FileRequest(operation=FileOpType.MKDIR, path=directory_path, time_ops=time_ops, content=None, destination=None, debug_tag='ensure_directory', name='create_directory')
-            result = req.execute_operation(driver=self.file_driver, logger=self.logger)
-            return result.success
-        except Exception as e:
-            raise RuntimeError(f"Failed to ensure directory exists '{directory_path}': {e}") from e
+        time_ops = SystemTimeProvider()
+        req = FileRequest(operation=FileOpType.MKDIR, path=directory_path, time_ops=time_ops, content=None, destination=None, debug_tag='ensure_directory', name='create_directory')
+        result = req.execute_operation(driver=self.file_driver, logger=self.logger)
+        if not result.success:
+            raise RuntimeError(f"Failed to ensure directory exists '{directory_path}': {result.error_message}")
+        return result.success
 
     def _move_directory_contents(self, source_path: str, dest_path: str) -> bool:
         """Move all contents from source directory to destination directory."""
-        try:
-            items = self.os_provider.listdir(source_path)
-            for item in items:
-                source_item = self.os_provider.path_join(source_path, item)
-                dest_item = self.os_provider.path_join(dest_path, item)
-                time_ops = SystemTimeProvider()
-                req = FileRequest(operation=FileOpType.MOVE, path=source_item, time_ops=time_ops, content=None, destination=dest_item, debug_tag='move_directory_item', name='move_contest_file')
-                move_result = req.execute_operation(driver=self.file_driver, logger=self.logger)
-                if not move_result.success:
-                    return False
-            return True
-        except Exception as e:
-            self.logger.error(f'Error moving directory contents: {e}')
-            raise RuntimeError(f'Failed to move directory contents: {e}') from e
+        items = self.os_provider.listdir(source_path)
+        for item in items:
+            source_item = self.os_provider.path_join(source_path, item)
+            dest_item = self.os_provider.path_join(dest_path, item)
+            time_ops = SystemTimeProvider()
+            req = FileRequest(operation=FileOpType.MOVE, path=source_item, time_ops=time_ops, content=None, destination=dest_item, debug_tag='move_directory_item', name='move_contest_file')
+            move_result = req.execute_operation(driver=self.file_driver, logger=self.logger)
+            if not move_result.success:
+                self.logger.error(f'Error moving directory contents: {move_result.error_message}')
+                raise RuntimeError(f'Failed to move {source_item} to {dest_item}: {move_result.error_message}')
+        return True
 
     def _clear_contest_current(self, contest_current_path: str) -> bool:
         """Clear contest_current directory."""
-        try:
-            if self.os_provider.exists(contest_current_path):
-                items = self.os_provider.listdir(contest_current_path)
-                for item in items:
-                    item_path = self.os_provider.path_join(contest_current_path, item)
-                    if self.os_provider.isdir(item_path):
-                        time_ops = SystemTimeProvider()
-                        req = FileRequest(operation=FileOpType.RMTREE, path=item_path, time_ops=time_ops, content=None, destination=None, debug_tag='clear_directory', name='remove_directory_tree')
-                    else:
-                        time_ops = SystemTimeProvider()
-                        req = FileRequest(operation=FileOpType.REMOVE, path=item_path, time_ops=time_ops, content=None, destination=None, debug_tag='clear_file', name='remove_file')
-                    result = req.execute_operation(driver=self.file_driver, logger=self.logger)
-                    if not result.success:
-                        return False
-            return True
-        except Exception as e:
-            self.logger.error(f'Error clearing contest_current directory: {e}')
-            raise RuntimeError(f'Failed to clear contest_current directory: {e}') from e
+        if self.os_provider.exists(contest_current_path):
+            items = self.os_provider.listdir(contest_current_path)
+            for item in items:
+                item_path = self.os_provider.path_join(contest_current_path, item)
+                if self.os_provider.isdir(item_path):
+                    time_ops = SystemTimeProvider()
+                    req = FileRequest(operation=FileOpType.RMTREE, path=item_path, time_ops=time_ops, content=None, destination=None, debug_tag='clear_directory', name='remove_directory_tree')
+                else:
+                    time_ops = SystemTimeProvider()
+                    req = FileRequest(operation=FileOpType.REMOVE, path=item_path, time_ops=time_ops, content=None, destination=None, debug_tag='clear_file', name='remove_file')
+                result = req.execute_operation(driver=self.file_driver, logger=self.logger)
+                if not result.success:
+                    self.logger.error(f'Error clearing contest_current directory: {result.error_message}')
+                    raise RuntimeError(f'Failed to clear {item_path}: {result.error_message}')
+        return True
 
     def _copy_directory_contents(self, source_path: str, dest_path: str) -> bool:
         """Copy all contents from source directory to destination directory."""
-        try:
-            self._ensure_directory_exists(dest_path)
-            items = self.os_provider.listdir(source_path)
-            for item in items:
-                source_item = self.os_provider.path_join(source_path, item)
-                dest_item = self.os_provider.path_join(dest_path, item)
-                if self.os_provider.isdir(source_item):
-                    time_ops = SystemTimeProvider()
-                    # Copy directory contents recursively
-                    if not self._copy_template_recursive(source_item, dest_item, item,
-                                                      self.get_current_contest_state()['language_name'],
-                                                      self.get_current_contest_state()['contest_name'],
-                                                      self.get_current_contest_state()['problem_name'], []):
-                        return False
-                    continue
+        self._ensure_directory_exists(dest_path)
+        items = self.os_provider.listdir(source_path)
+        for item in items:
+            source_item = self.os_provider.path_join(source_path, item)
+            dest_item = self.os_provider.path_join(dest_path, item)
+            if self.os_provider.isdir(source_item):
                 time_ops = SystemTimeProvider()
-                req = FileRequest(operation=FileOpType.COPY, path=source_item, time_ops=time_ops, content=None, destination=dest_item, debug_tag='copy_file', name='copy_template_file')
-                copy_result = req.execute_operation(driver=self.file_driver, logger=self.logger)
-                if not copy_result.success:
+                # Copy directory contents recursively
+                if not self._copy_template_recursive(source_item, dest_item, item,
+                                                  self.get_current_contest_state()['language_name'],
+                                                  self.get_current_contest_state()['contest_name'],
+                                                  self.get_current_contest_state()['problem_name'], []):
                     return False
-            return True
-        except Exception as e:
-            self.logger.error(f'Error copying directory contents: {e}')
-            raise RuntimeError(f'Failed to copy directory contents: {e}') from e
+                continue
+            time_ops = SystemTimeProvider()
+            req = FileRequest(operation=FileOpType.COPY, path=source_item, time_ops=time_ops, content=None, destination=dest_item, debug_tag='copy_file', name='copy_template_file')
+            copy_result = req.execute_operation(driver=self.file_driver, logger=self.logger)
+            if not copy_result.success:
+                self.logger.error(f'Error copying file: {copy_result.error_message}')
+                raise RuntimeError(f'Failed to copy {source_item} to {dest_item}: {copy_result.error_message}')
+        return True
 
     def _copy_template_structure(self, template_path: str, dest_path: str, language: str, contest: str, problem: str) -> bool:
         """Copy template structure to destination, preserving directory structure and tracking files."""
-        try:
-            self._ensure_directory_exists(dest_path)
-            tracked_files = []
-            success = self._copy_template_recursive(template_path, dest_path, '', language, contest, problem, tracked_files)
-            if success and tracked_files and self.files_repo:
-                self.files_repo.track_multiple_files(tracked_files)
-            return success
-        except Exception as e:
-            self.logger.error(f'Error copying template structure: {e}')
-            raise RuntimeError(f'Failed to copy template structure: {e}') from e
+        self._ensure_directory_exists(dest_path)
+        tracked_files = []
+        success = self._copy_template_recursive(template_path, dest_path, '', language, contest, problem, tracked_files)
+        if success and tracked_files and self.files_repo:
+            self.files_repo.track_multiple_files(tracked_files)
+        return success
 
     def _copy_template_recursive(self, source_dir: str, dest_dir: str, relative_path: str, language: str, contest: str, problem: str, tracked_files: List) -> bool:
         """Recursively copy template files while tracking structure."""
-        try:
-            items = self.os_provider.listdir(source_dir)
-            for item in items:
-                source_item = self.os_provider.path_join(source_dir, item)
-                dest_item = self.os_provider.path_join(dest_dir, item)
-                if relative_path:
-                    item_relative_path = self.os_provider.path_join(relative_path, item)
-                else:
-                    item_relative_path = item
-                if self.os_provider.isdir(source_item):
-                    self._ensure_directory_exists(dest_item)
-                    if not self._copy_template_recursive(source_item, dest_item, item_relative_path, language, contest, problem, tracked_files):
-                        return False
-                else:
-                    time_ops = SystemTimeProvider()
-                    req = FileRequest(operation=FileOpType.COPY, path=source_item, time_ops=time_ops, content=None, destination=dest_item, debug_tag='copy_template_recursive', name='copy_template_recursive_file')
-                    result = req.execute_operation(driver=self.file_driver, logger=self.logger)
-                    if not result.success:
-                        return False
-                    tracked_files.append((language, contest, problem, item_relative_path, 'template', source_item))
-            return True
-        except Exception as e:
-            raise RuntimeError(f'Failed to copy template files recursively: {e}') from e
+        items = self.os_provider.listdir(source_dir)
+        for item in items:
+            source_item = self.os_provider.path_join(source_dir, item)
+            dest_item = self.os_provider.path_join(dest_dir, item)
+            if relative_path:
+                item_relative_path = self.os_provider.path_join(relative_path, item)
+            else:
+                item_relative_path = item
+            if self.os_provider.isdir(source_item):
+                self._ensure_directory_exists(dest_item)
+                if not self._copy_template_recursive(source_item, dest_item, item_relative_path, language, contest, problem, tracked_files):
+                    return False
+            else:
+                time_ops = SystemTimeProvider()
+                req = FileRequest(operation=FileOpType.COPY, path=source_item, time_ops=time_ops, content=None, destination=dest_item, debug_tag='copy_template_recursive', name='copy_template_recursive_file')
+                result = req.execute_operation(driver=self.file_driver, logger=self.logger)
+                if not result.success:
+                    self.logger.error(f'Failed to copy template file: {result.error_message}')
+                    raise RuntimeError(f'Failed to copy {source_item} to {dest_item}: {result.error_message}')
+                tracked_files.append((language, contest, problem, item_relative_path, 'template', source_item))
+        return True
 
     def _track_files_from_stock(self, stock_path: str, current_path: str, language: str, contest: str, problem: str) -> bool:
         """Track files copied from stock to contest_current."""
-        try:
-            tracked_files = []
-            self._track_files_recursive(stock_path, current_path, '', language, contest, problem, tracked_files)
-            if tracked_files and self.files_repo:
-                self.files_repo.clear_contest_tracking(language, contest, problem)
-                self.files_repo.track_multiple_files(tracked_files)
-            return True
-        except Exception as e:
-            raise RuntimeError(f'Failed to track files from stock: {e}') from e
+        tracked_files = []
+        self._track_files_recursive(stock_path, current_path, '', language, contest, problem, tracked_files)
+        if tracked_files and self.files_repo:
+            self.files_repo.clear_contest_tracking(language, contest, problem)
+            self.files_repo.track_multiple_files(tracked_files)
+        return True
 
     def _track_files_recursive(self, source_dir: str, dest_dir: str, relative_path: str, language: str, contest: str, problem: str, tracked_files: List) -> None:
         """Recursively track files from source to destination."""
-        try:
-            items = self.os_provider.listdir(dest_dir)
-            for item in items:
-                dest_item = self.os_provider.path_join(dest_dir, item)
-                if relative_path:
-                    item_relative_path = self.os_provider.path_join(relative_path, item)
-                else:
-                    item_relative_path = item
-                if self.os_provider.isdir(dest_item):
-                    source_subdir = self.os_provider.path_join(source_dir, item)
-                    self._track_files_recursive(source_subdir, dest_item, item_relative_path, language, contest, problem, tracked_files)
-                else:
-                    source_item = self.os_provider.path_join(source_dir, item)
-                    tracked_files.append((language, contest, problem, item_relative_path, 'stock', source_item))
-        except Exception as e:
-            raise RuntimeError(f'Failed to track files recursively: {e}') from e
+        items = self.os_provider.listdir(dest_dir)
+        for item in items:
+            dest_item = self.os_provider.path_join(dest_dir, item)
+            if relative_path:
+                item_relative_path = self.os_provider.path_join(relative_path, item)
+            else:
+                item_relative_path = item
+            if self.os_provider.isdir(dest_item):
+                source_subdir = self.os_provider.path_join(source_dir, item)
+                self._track_files_recursive(source_subdir, dest_item, item_relative_path, language, contest, problem, tracked_files)
+            else:
+                source_item = self.os_provider.path_join(source_dir, item)
+                tracked_files.append((language, contest, problem, item_relative_path, 'stock', source_item))
 
     def handle_contest_change(self, new_language: str, new_contest: str, new_problem: str) -> bool:
         """Handle contest change with backup if needed.
@@ -358,21 +312,17 @@ class ContestManager:
         Returns:
             True if handling successful, False otherwise
         """
-        try:
-            if self.needs_backup(new_language, new_contest, new_problem):
-                current_state = self.get_current_contest_state()
-                backup_success = self.backup_contest_current(current_state)
-                if backup_success:
-                    self.logger.info('📦 Backed up contest_current to contest_stock')
-                    self.logger.info(f'   From: {current_state['language_name']} {current_state['contest_name']} {current_state['problem_name']}')
-                    self.logger.info(f'   To: {new_language} {new_contest} {new_problem}')
-                else:
-                    self.logger.warning('Failed to backup contest_current')
-                    return False
-            return True
-        except Exception as e:
-            self.logger.error(f'Error handling contest change: {e}')
-            raise RuntimeError(f'Failed to handle contest change: {e}') from e
+        if self.needs_backup(new_language, new_contest, new_problem):
+            current_state = self.get_current_contest_state()
+            backup_success = self.backup_contest_current(current_state)
+            if backup_success:
+                self.logger.info('📦 Backed up contest_current to contest_stock')
+                self.logger.info(f'   From: {current_state['language_name']} {current_state['contest_name']} {current_state['problem_name']}')
+                self.logger.info(f'   To: {new_language} {new_contest} {new_problem}')
+            else:
+                self.logger.warning('Failed to backup contest_current')
+                return False
+        return True
 
     def restore_from_contest_stock(self, language: str, contest: str, problem: str) -> bool:
         """Restore contest_current from contest_stock if available.
@@ -385,22 +335,18 @@ class ContestManager:
         Returns:
             True if restoration successful, False if no stock available
         """
-        try:
-            shared_config = self.env_json['shared']
-            paths = shared_config['paths']
-            contest_current_path = paths['contest_current_path']
-            contest_stock_path_template = paths['contest_stock_path']
-            contest_stock_path = contest_stock_path_template.format(language_name=language, contest_name=contest, problem_name=problem)
-            if not self._directory_has_content(contest_stock_path):
-                return False
-            self._clear_contest_current(contest_current_path)
-            success = self._copy_directory_contents(contest_stock_path, contest_current_path)
-            if success and self.files_repo:
-                self._track_files_from_stock(contest_stock_path, contest_current_path, language, contest, problem)
-            return success
-        except Exception as e:
-            self.logger.error(f'Error restoring from contest_stock: {e}')
-            raise RuntimeError(f'Failed to restore from contest_stock: {e}') from e
+        shared_config = self.env_json['shared']
+        paths = shared_config['paths']
+        contest_current_path = paths['contest_current_path']
+        contest_stock_path_template = paths['contest_stock_path']
+        contest_stock_path = contest_stock_path_template.format(language_name=language, contest_name=contest, problem_name=problem)
+        if not self._directory_has_content(contest_stock_path):
+            return False
+        self._clear_contest_current(contest_current_path)
+        success = self._copy_directory_contents(contest_stock_path, contest_current_path)
+        if success and self.files_repo:
+            self._track_files_from_stock(contest_stock_path, contest_current_path, language, contest, problem)
+        return success
 
     def initialize_from_template(self, language: str, contest: str, problem: str) -> bool:
         """Initialize contest_current from contest_template.
@@ -413,23 +359,19 @@ class ContestManager:
         Returns:
             True if initialization successful, False otherwise
         """
-        try:
-            shared_config = self.env_json['shared']
-            paths = shared_config['paths']
-            contest_current_path = paths['contest_current_path']
-            contest_template_path = paths['contest_template_path']
-            template_language_path = self.os_provider.path_join(contest_template_path, language)
-            if not self._directory_has_content(template_language_path):
-                self.logger.warning(f'No template found for language {language}')
-                return False
-            self._clear_contest_current(contest_current_path)
-            success = self._copy_template_structure(template_language_path, contest_current_path, language, contest, problem)
-            if success:
-                self.logger.info(f'📋 Initialized from template: {language} {contest} {problem}')
-            return success
-        except Exception as e:
-            self.logger.error(f'Error initializing from template: {e}')
-            raise RuntimeError(f'Failed to initialize from template: {e}') from e
+        shared_config = self.env_json['shared']
+        paths = shared_config['paths']
+        contest_current_path = paths['contest_current_path']
+        contest_template_path = paths['contest_template_path']
+        template_language_path = self.os_provider.path_join(contest_template_path, language)
+        if not self._directory_has_content(template_language_path):
+            self.logger.warning(f'No template found for language {language}')
+            return False
+        self._clear_contest_current(contest_current_path)
+        success = self._copy_template_structure(template_language_path, contest_current_path, language, contest, problem)
+        if success:
+            self.logger.info(f'📋 Initialized from template: {language} {contest} {problem}')
+        return success
 
     def initialize_contest_current(self, language: str, contest: str, problem: str) -> bool:
         """Initialize contest_current with priority: stock -> template.

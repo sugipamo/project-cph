@@ -69,8 +69,8 @@ class TestContestManager:
         assert logger == self.mock_logger
         self.mock_container.resolve.assert_called_with(DIKey.UNIFIED_LOGGER)
     
-    def test_lazy_load_logger_fallback_to_dummy(self):
-        """Test logger falls back to dummy when not available"""
+    def test_lazy_load_logger_failure(self):
+        """Test logger raises error when not available"""
         # Make logger resolution fail
         def resolve_mock_no_logger(key):
             if key == DIKey.UNIFIED_LOGGER:
@@ -79,13 +79,9 @@ class TestContestManager:
         
         self.mock_container.resolve.side_effect = resolve_mock_no_logger
         
-        logger = self.contest_manager.logger
-        
-        # Should get dummy logger with required methods
-        assert hasattr(logger, 'warning')
-        assert hasattr(logger, 'error')
-        assert hasattr(logger, 'info')
-        assert hasattr(logger, 'debug')
+        # Should raise error when logger not available (no fallback)
+        with pytest.raises(ValueError, match="Logger not registered"):
+            _ = self.contest_manager.logger
     
     @patch('src.application.contest_manager.SystemConfigLoader')
     def test_get_current_contest_state(self, mock_config_loader_class):
@@ -542,7 +538,7 @@ class TestContestManager:
             assert result is None
     
     def test_backup_contest_current_exception_handling(self):
-        """Test backup_contest_current handles exceptions"""
+        """Test backup_contest_current propagates exceptions"""
         self.contest_manager._env_json = {
             'shared': {
                 'paths': {
@@ -561,37 +557,39 @@ class TestContestManager:
         with patch.object(self.contest_manager, '_directory_has_content') as mock_has_content:
             mock_has_content.side_effect = Exception("Test exception")
             
-            with pytest.raises(RuntimeError) as exc_info:
+            # Without fallback processing, exception propagates as-is
+            with pytest.raises(Exception) as exc_info:
                 self.contest_manager.backup_contest_current(current_state)
             
-            assert "Backup operation failed" in str(exc_info.value)
-            self.mock_logger.error.assert_called()
+            assert "Test exception" in str(exc_info.value)
     
     @patch('src.application.contest_manager.SystemTimeProvider')
     def test_directory_has_content_exception(self, mock_time_provider):
-        """Test _directory_has_content exception handling"""
+        """Test _directory_has_content propagates exceptions"""
         from src.application.execution_requests import FileRequest
         
         with patch.object(FileRequest, 'execute_operation') as mock_execute:
             mock_execute.side_effect = Exception("File operation error")
             
-            with pytest.raises(RuntimeError) as exc_info:
+            # Without fallback processing, exception propagates as-is
+            with pytest.raises(Exception) as exc_info:
                 self.contest_manager._directory_has_content('/test/path')
             
-            assert "Failed to check directory content" in str(exc_info.value)
+            assert "File operation error" in str(exc_info.value)
     
     @patch('src.application.contest_manager.SystemTimeProvider')
     def test_ensure_directory_exists_exception(self, mock_time_provider):
-        """Test _ensure_directory_exists exception handling"""
+        """Test _ensure_directory_exists propagates exceptions"""
         from src.application.execution_requests import FileRequest
         
         with patch.object(FileRequest, 'execute_operation') as mock_execute:
             mock_execute.side_effect = Exception("Directory creation error")
             
-            with pytest.raises(RuntimeError) as exc_info:
+            # Exception propagates as-is when execute_operation fails
+            with pytest.raises(Exception) as exc_info:
                 self.contest_manager._ensure_directory_exists('/test/path')
             
-            assert "Failed to ensure directory exists" in str(exc_info.value)
+            assert "Directory creation error" in str(exc_info.value)
     
     @patch('src.application.contest_manager.SystemTimeProvider')
     def test_move_directory_contents_success(self, mock_time_provider):
@@ -617,28 +615,35 @@ class TestContestManager:
         """Test _move_directory_contents handles move failure"""
         from src.application.execution_requests import FileRequest
         
+        # Configure the mock time provider to return a mock instance
+        mock_time_instance = Mock()
+        mock_time_provider.return_value = mock_time_instance
+        
         self.mock_os_provider.listdir.return_value = ['file1.py']
         self.mock_os_provider.path_join.side_effect = lambda a, b: f"{a}/{b}"
         
         mock_result = Mock()
         mock_result.success = False
+        mock_result.error_message = "Move failed"
         
         with patch.object(FileRequest, 'execute_operation') as mock_execute:
             mock_execute.return_value = mock_result
             
-            result = self.contest_manager._move_directory_contents('/source', '/dest')
+            # Should raise RuntimeError due to failure
+            with pytest.raises(RuntimeError) as exc_info:
+                self.contest_manager._move_directory_contents('/source', '/dest')
             
-            assert result is False
+            assert "Failed to move /source/file1.py to /dest/file1.py" in str(exc_info.value)
     
     def test_move_directory_contents_exception(self):
         """Test _move_directory_contents exception handling"""
         self.mock_os_provider.listdir.side_effect = Exception("List directory error")
         
-        with pytest.raises(RuntimeError) as exc_info:
+        # Should not catch the exception anymore based on the implementation
+        with pytest.raises(Exception) as exc_info:
             self.contest_manager._move_directory_contents('/source', '/dest')
         
-        assert "Failed to move directory contents" in str(exc_info.value)
-        self.mock_logger.error.assert_called()
+        assert "List directory error" in str(exc_info.value)
     
     @patch('src.application.contest_manager.SystemTimeProvider')
     def test_clear_contest_current_with_files_and_dirs(self, mock_time_provider):
@@ -665,11 +670,11 @@ class TestContestManager:
         """Test _clear_contest_current exception handling"""
         self.mock_os_provider.exists.side_effect = Exception("OS error")
         
-        with pytest.raises(RuntimeError) as exc_info:
+        # Should not catch the exception anymore based on the implementation
+        with pytest.raises(Exception) as exc_info:
             self.contest_manager._clear_contest_current('/contest/current')
         
-        assert "Failed to clear contest_current directory" in str(exc_info.value)
-        self.mock_logger.error.assert_called()
+        assert "OS error" in str(exc_info.value)
     
     @patch('src.application.contest_manager.SystemTimeProvider')
     def test_copy_directory_contents_with_subdirs(self, mock_time_provider):
@@ -707,11 +712,11 @@ class TestContestManager:
         with patch.object(self.contest_manager, '_ensure_directory_exists') as mock_ensure:
             mock_ensure.side_effect = Exception("Directory error")
             
-            with pytest.raises(RuntimeError) as exc_info:
+            # Should not catch the exception anymore based on the implementation
+            with pytest.raises(Exception) as exc_info:
                 self.contest_manager._copy_directory_contents('/source', '/dest')
             
-            assert "Failed to copy directory contents" in str(exc_info.value)
-            self.mock_logger.error.assert_called()
+            assert "Directory error" in str(exc_info.value)
     
     def test_copy_template_structure_success(self):
         """Test _copy_template_structure with file tracking"""
@@ -740,11 +745,11 @@ class TestContestManager:
         with patch.object(self.contest_manager, '_ensure_directory_exists') as mock_ensure:
             mock_ensure.side_effect = Exception("Template error")
             
-            with pytest.raises(RuntimeError) as exc_info:
+            # Should not catch the exception anymore based on the implementation
+            with pytest.raises(Exception) as exc_info:
                 self.contest_manager._copy_template_structure('/template', '/dest', 'python', 'ABC123', 'A')
             
-            assert "Failed to copy template structure" in str(exc_info.value)
-            self.mock_logger.error.assert_called()
+            assert "Template error" in str(exc_info.value)
     
     @patch('src.application.contest_manager.SystemTimeProvider')
     def test_copy_template_recursive_files_and_dirs(self, mock_time_provider):
@@ -792,10 +797,11 @@ class TestContestManager:
         
         tracked_files = []
         
-        with pytest.raises(RuntimeError) as exc_info:
+        # Should not catch the exception anymore based on the implementation
+        with pytest.raises(Exception) as exc_info:
             self.contest_manager._copy_template_recursive('/source', '/dest', '', 'python', 'ABC123', 'A', tracked_files)
         
-        assert "Failed to copy template files recursively" in str(exc_info.value)
+        assert "Recursive error" in str(exc_info.value)
     
     def test_track_files_from_stock_success(self):
         """Test _track_files_from_stock with repository operations"""
@@ -819,10 +825,11 @@ class TestContestManager:
         with patch.object(self.contest_manager, '_track_files_recursive') as mock_track:
             mock_track.side_effect = Exception("Tracking error")
             
-            with pytest.raises(RuntimeError) as exc_info:
+            # Should not catch the exception anymore based on the implementation
+            with pytest.raises(Exception) as exc_info:
                 self.contest_manager._track_files_from_stock('/stock', '/current', 'python', 'ABC123', 'A')
             
-            assert "Failed to track files from stock" in str(exc_info.value)
+            assert "Tracking error" in str(exc_info.value)
     
     def test_track_files_recursive_success(self):
         """Test _track_files_recursive processes files correctly"""
@@ -856,41 +863,38 @@ class TestContestManager:
         
         tracked_files = []
         
-        with pytest.raises(RuntimeError) as exc_info:
+        # Should not catch the exception anymore based on the implementation
+        with pytest.raises(Exception) as exc_info:
             self.contest_manager._track_files_recursive('/source', '/dest', '', 'python', 'ABC123', 'A', tracked_files)
         
-        assert "Failed to track files recursively" in str(exc_info.value)
+        assert "List error" in str(exc_info.value)
     
     def test_handle_contest_change_exception(self):
         """Test handle_contest_change exception handling"""
         with patch.object(self.contest_manager, 'needs_backup') as mock_needs:
             mock_needs.side_effect = Exception("Check error")
             
-            with pytest.raises(RuntimeError) as exc_info:
+            # Should not catch the exception anymore based on the implementation
+            with pytest.raises(Exception) as exc_info:
                 self.contest_manager.handle_contest_change('python', 'ABC123', 'A')
             
-            assert "Failed to handle contest change" in str(exc_info.value)
-            self.mock_logger.error.assert_called()
+            assert "Check error" in str(exc_info.value)
     
     def test_restore_from_contest_stock_exception(self):
         """Test restore_from_contest_stock exception handling"""
         self.contest_manager._env_json = {'shared': {'paths': {}}}
         
-        with pytest.raises(RuntimeError) as exc_info:
+        # Should raise KeyError when accessing missing paths
+        with pytest.raises(KeyError):
             self.contest_manager.restore_from_contest_stock('python', 'ABC123', 'A')
-        
-        assert "Failed to restore from contest_stock" in str(exc_info.value)
-        self.mock_logger.error.assert_called()
     
     def test_initialize_from_template_exception(self):
         """Test initialize_from_template exception handling"""
         self.contest_manager._env_json = {'shared': {'paths': {}}}
         
-        with pytest.raises(RuntimeError) as exc_info:
+        # Should raise KeyError when accessing missing paths
+        with pytest.raises(KeyError):
             self.contest_manager.initialize_from_template('python', 'ABC123', 'A')
-        
-        assert "Failed to initialize from template" in str(exc_info.value)
-        self.mock_logger.error.assert_called()
     
     @patch('src.application.contest_manager.SystemTimeProvider')
     def test_restore_from_contest_stock_full_flow(self, mock_time_provider):

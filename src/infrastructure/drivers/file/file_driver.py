@@ -30,7 +30,8 @@ class FileDriver(BaseDriverImplementation):
             if op == 'read':
                 return self.read_file(request.path)
             if op == 'write':
-                return self.create_file(request.path, request.content)
+                create_parents = getattr(request, 'create_parents', True)
+                return self.create_file(request.path, request.content, create_parents)
             if op == 'copy':
                 return self.copy(request.source, request.destination)
             if op == 'move':
@@ -80,7 +81,7 @@ class FileDriver(BaseDriverImplementation):
     # File operations
 
     def create_file(self, path: Union[str, Path], content: str,
-                   create_parents: bool = True) -> None:
+                   create_parents: bool) -> None:
         """Create or overwrite a file with content.
         
         Args:
@@ -211,7 +212,7 @@ class FileDriver(BaseDriverImplementation):
         self.log_debug(f"Removing directory tree: {dir_path}")
         shutil.rmtree(dir_path)
 
-    def list_files(self, path: Union[str, Path], recursive: bool = False) -> List[Path]:
+    def list_files(self, path: Union[str, Path], recursive: bool) -> List[Path]:
         """List files in a directory.
         
         Args:
@@ -257,7 +258,7 @@ class FileDriver(BaseDriverImplementation):
 
     # Utility operations
 
-    def glob(self, pattern: str, root: Optional[Union[str, Path]] = None) -> List[Path]:
+    def glob(self, pattern: str, root: Optional[Union[str, Path]]) -> List[Path]:
         """Find files matching a glob pattern.
         
         Args:
@@ -274,7 +275,7 @@ class FileDriver(BaseDriverImplementation):
 
         return list(root_path.glob(pattern))
 
-    def hash_file(self, path: Union[str, Path], algorithm: str = "sha256") -> str:
+    def hash_file(self, path: Union[str, Path], algorithm: str) -> str:
         """Calculate hash of a file.
         
         Args:
@@ -293,7 +294,7 @@ class FileDriver(BaseDriverImplementation):
 
         return hash_obj.hexdigest()
 
-    def open_file(self, path: Union[str, Path], mode: str = 'r', **kwargs):
+    def open_file(self, path: Union[str, Path], mode: str, **kwargs):
         """Open a file and return file handle.
         
         Args:

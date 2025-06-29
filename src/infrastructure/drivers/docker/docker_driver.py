@@ -179,7 +179,7 @@ class DockerDriver(BaseDriverImplementation):
     # Container Operations
 
     def run_container(self, image: str, name: Optional[str],
-                      options: Dict[str, Any], show_output: bool = True):
+                      options: Dict[str, Any], show_output: bool):
         """Run a Docker container with optional tracking."""
         self.log_info(f"Running container from image: {image}", name=name)
 
@@ -204,7 +204,7 @@ class DockerDriver(BaseDriverImplementation):
 
         return result
 
-    def stop_container(self, name: str, timeout: int = 10, show_output: bool = True):
+    def stop_container(self, name: str, timeout: int, show_output: bool):
         """Stop a Docker container with optional tracking."""
         self.log_info(f"Stopping container: {name}", timeout=timeout)
 
@@ -229,7 +229,7 @@ class DockerDriver(BaseDriverImplementation):
 
         return result
 
-    def remove_container(self, name: str, force: bool = False, show_output: bool = True):
+    def remove_container(self, name: str, force: bool, show_output: bool):
         """Remove a Docker container."""
         self.log_info(f"Removing container: {name}", force=force)
 
@@ -255,14 +255,15 @@ class DockerDriver(BaseDriverImplementation):
         return result
 
     def build_docker_image(self, image_name: str, dockerfile_path: str,
-                          build_args: Dict[str, str] = None, show_output: bool = True):
+                          build_args: Optional[Dict[str, str]], show_output: bool):
         """Build a Docker image."""
         if not self.validate_docker_image_name(image_name):
             raise ValueError(f"Invalid Docker image name: {image_name}")
 
         self.log_info(f"Building Docker image: {image_name}", dockerfile=dockerfile_path)
 
-        build_args = build_args or {}
+        if build_args is None:
+            build_args = {}
         cmd = self._build_docker_build_command(image_name, dockerfile_path, build_args)
 
         req = ShellRequest(
@@ -286,8 +287,8 @@ class DockerDriver(BaseDriverImplementation):
         return result
 
     def exec_in_container(self, container_name: str, command: Union[str, List[str]],
-                          interactive: bool = False, tty: bool = False,
-                          show_output: bool = True):
+                          interactive: bool, tty: bool,
+                          show_output: bool):
         """Execute a command in a running container."""
         self.log_info(f"Executing command in container: {container_name}")
 
@@ -318,8 +319,8 @@ class DockerDriver(BaseDriverImplementation):
 
         return req.execute_operation(driver=self.execution_driver, logger=self.logger)
 
-    def get_logs(self, container_name: str, follow: bool = False,
-                 tail: Optional[int] = None, show_output: bool = True):
+    def get_logs(self, container_name: str, follow: bool,
+                 tail: Optional[int], show_output: bool):
         """Get logs from a container."""
         cmd = ["docker", "logs"]
         if follow:
@@ -343,7 +344,7 @@ class DockerDriver(BaseDriverImplementation):
 
         return req.execute_operation(driver=self.execution_driver, logger=self.logger)
 
-    def ps(self, all_containers: bool = False, show_output: bool = True):
+    def ps(self, all_containers: bool, show_output: bool):
         """List Docker containers."""
         cmd = ["docker", "ps"]
         if all_containers:

@@ -105,7 +105,7 @@ class ShellRequest(OperationRequestFoundation):
                     working_directory=self.working_directory
                 )
 
-            except Exception as e:
+            except (OSError, IOError, RuntimeError) as e:
                 error = self._error_converter.convert_error(e)
                 if logger and attempt < max_attempts - 1:
                     logger.warning(f"Command failed with exception (attempt {attempt + 1}/{max_attempts}), retrying...")
@@ -204,7 +204,7 @@ class PythonRequest(OperationRequestFoundation):
                 end_time=self._time_ops.now()
             )
 
-        except Exception as e:
+        except (OSError, IOError, RuntimeError, ValueError) as e:
             if logger:
                 logger.error(f"Python execution failed with exception: {e!s}")
             return PythonResult(
@@ -306,7 +306,7 @@ class DockerRequest(OperationRequestFoundation):
                 return self._execute_remove(driver, logger)
             raise DockerOperationError(f"Unsupported Docker operation: {self.operation}")
 
-        except Exception as e:
+        except (DockerOperationError, OSError, IOError, RuntimeError, ValueError) as e:
             if logger:
                 logger.error(f"Docker operation failed: {e!s}")
             return DockerResult(
@@ -415,7 +415,7 @@ class DockerRequest(OperationRequestFoundation):
                 all_success = all(getattr(r, 'success', False) for r in result)
             else:
                 all_success = getattr(result, 'success', False)
-        except Exception as e:
+        except (DockerOperationError, OSError, IOError, RuntimeError, ValueError, AttributeError) as e:
             if logger:
                 logger.error(f"Docker run operation failed: {e}")
             return DockerResult(
@@ -577,7 +577,7 @@ class FileRequest(OperationRequestFoundation):
 
             return result
 
-        except Exception as e:
+        except (OSError, IOError, ValueError, RuntimeError) as e:
             return self._handle_file_error(e, start_time, logger)
 
     def _resolve_driver(self, driver: Any) -> Any:
@@ -587,12 +587,12 @@ class FileRequest(OperationRequestFoundation):
             return driver
 
         # Otherwise try to get file driver from registry
-        try:
-            registry = SystemRegistryProvider()
-            return registry.get_driver('file')
-        except Exception:
-            # Fallback to using the provided driver
-            return driver
+        registry = SystemRegistryProvider()
+        file_driver = registry.get_driver('file')
+        if file_driver:
+            return file_driver
+        # Use the provided driver if registry lookup fails
+        return driver
 
     def _dispatch_file_operation(self, driver: Any, logger: Optional[Any]) -> FileResult:
         """Dispatch to the appropriate file operation method."""

@@ -119,7 +119,7 @@ class TestFileDriverFileOperations:
     def test_create_file_simple(self):
         """Test creating a simple file."""
         file_path = Path(self.temp_dir) / "test.txt"
-        self.driver.create_file(file_path, "Hello World")
+        self.driver.create_file(file_path, "Hello World", create_parents=True)
         
         assert file_path.exists()
         assert file_path.read_text() == "Hello World"
@@ -365,7 +365,7 @@ class TestFileDriverUtilityOperations:
             mock_path.glob.return_value = [Path("file.txt")]
             mock_cwd.return_value = mock_path
             
-            matches = self.driver.glob("*.txt")
+            matches = self.driver.glob("*.txt", root=None)
             
             mock_path.glob.assert_called_once_with("*.txt")
             assert len(matches) == 1
@@ -375,7 +375,7 @@ class TestFileDriverUtilityOperations:
         file_path = Path(self.temp_dir) / "hash_me.txt"
         file_path.write_text("Hash this content")
         
-        hash_value = self.driver.hash_file(file_path)
+        hash_value = self.driver.hash_file(file_path, algorithm="sha256")
         
         # SHA256 hash of "Hash this content"
         expected = "4f361c36c0ae08de9c6f684bce62f31d50403ec2f17d85046711df9795c4ab6d"
@@ -430,11 +430,25 @@ class TestFileDriverCommandExecution:
         request.operation = "write"
         request.path = "/some/file"
         request.content = "new content"
+        request.create_parents = True
         
         with patch.object(self.driver, 'create_file') as mock_create:
             self.driver.execute_command(request)
             
-            mock_create.assert_called_once_with("/some/file", "new content")
+            mock_create.assert_called_once_with("/some/file", "new content", True)
+
+    def test_execute_command_write_without_create_parents(self):
+        """Test execute_command for write operation without create_parents."""
+        request = Mock(spec=['operation', 'path', 'content'])
+        request.operation = "write"
+        request.path = "/some/file"
+        request.content = "new content"
+        
+        with patch.object(self.driver, 'create_file') as mock_create:
+            self.driver.execute_command(request)
+            
+            # Should use default value of True when create_parents is not provided
+            mock_create.assert_called_once_with("/some/file", "new content", True)
 
     def test_execute_command_copy(self):
         """Test execute_command for copy operation."""

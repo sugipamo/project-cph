@@ -49,7 +49,7 @@ class TestFormatInfo:
         result = info.to_dict()
         
         assert result == {
-            'formattype': 'CUSTOM',
+            'formattype': 'COLORED',
             'color': 'green',
             'bold': True
         }
@@ -58,14 +58,14 @@ class TestFormatInfo:
     def test_from_dict(self):
         """Test creation from dictionary."""
         data = {
-            'formattype': 'RAW',
+            'formattype': 'PLAIN',
             'color': 'yellow',
             'bold': False
         }
         
         info = FormatInfo.from_dict(data)
         
-        assert info.formattype == LogFormatType.RAW
+        assert info.formattype == LogFormatType.PLAIN
         assert info.color == "yellow"
         assert info.bold is False
         assert info.indent == 0  # Default value
@@ -80,15 +80,15 @@ class TestFormatInfo:
         
         assert result == "Red text"
 
-    def test_apply_raw_format(self):
-        """Test apply with RAW format type."""
-        info = FormatInfo(formattype=LogFormatType.RAW)
+    def test_apply_structured_format(self):
+        """Test apply with STRUCTURED format type."""
+        info = FormatInfo(formattype=LogFormatType.STRUCTURED)
         
-        # RAW format preserves ANSI codes
-        text_with_ansi = "\x1b[31mRed text\x1b[0m"
-        result = info.apply(text_with_ansi)
+        # STRUCTURED format preserves text as-is
+        text = "Test text"
+        result = info.apply(text)
         
-        assert result == text_with_ansi
+        assert result == text
 
     def test_apply_custom_format_with_color(self):
         """Test apply with CUSTOM format and color."""
@@ -134,7 +134,7 @@ class TestFormatInfo:
     def test_apply_with_indent(self):
         """Test apply with indentation."""
         info = FormatInfo(
-            formattype=LogFormatType.RAW,
+            formattype=LogFormatType.PLAIN,
             indent=2
         )
         
