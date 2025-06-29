@@ -33,7 +33,7 @@ class TestUserInputParserIntegration:
         mock_config = Mock()
         config_manager.create_execution_config.return_value = mock_config
         
-        integration = UserInputParserIntegration(config_manager)
+        integration = UserInputParserIntegration(config_manager, "/test/contest", "/test/system")
         
         # Test parameters
         command_type = "run"
@@ -71,7 +71,7 @@ class TestUserInputParserIntegration:
         mock_config = Mock()
         config_manager.create_execution_config.return_value = mock_config
         
-        integration = UserInputParserIntegration(config_manager)
+        integration = UserInputParserIntegration(config_manager, "/test/contest", "/test/system")
         
         # Test parameters
         command_type = "test"
@@ -94,7 +94,7 @@ class TestUserInputParserIntegration:
     def test_validate_new_system_compatibility_success(self):
         """Test successful compatibility validation."""
         config_manager = Mock()
-        integration = UserInputParserIntegration(config_manager)
+        integration = UserInputParserIntegration(config_manager, "/test/contest", "/test/system")
         
         # Create old context mock
         old_context = Mock()
@@ -116,7 +116,7 @@ class TestUserInputParserIntegration:
     def test_validate_new_system_compatibility_contest_mismatch(self):
         """Test compatibility validation with contest name mismatch."""
         config_manager = Mock()
-        integration = UserInputParserIntegration(config_manager)
+        integration = UserInputParserIntegration(config_manager, "/test/contest", "/test/system")
         
         # Create old context mock
         old_context = Mock()
@@ -138,7 +138,7 @@ class TestUserInputParserIntegration:
     def test_validate_new_system_compatibility_language_mismatch(self):
         """Test compatibility validation with language mismatch."""
         config_manager = Mock()
-        integration = UserInputParserIntegration(config_manager)
+        integration = UserInputParserIntegration(config_manager, "/test/contest", "/test/system")
         
         # Create old context mock
         old_context = Mock()
@@ -160,7 +160,7 @@ class TestUserInputParserIntegration:
     def test_validate_new_system_compatibility_no_attributes(self):
         """Test compatibility validation when old context has no attributes."""
         config_manager = Mock()
-        integration = UserInputParserIntegration(config_manager)
+        integration = UserInputParserIntegration(config_manager, "/test/contest", "/test/system")
         
         # Create old context mock without attributes
         old_context = Mock(spec=[])
@@ -180,7 +180,7 @@ class TestUserInputParserIntegration:
     def test_validate_new_system_compatibility_exception(self):
         """Test compatibility validation with exception."""
         config_manager = Mock()
-        integration = UserInputParserIntegration(config_manager)
+        integration = UserInputParserIntegration(config_manager, "/test/contest", "/test/system")
         
         # Create old context that raises exception when accessed
         old_context = Mock()

@@ -135,11 +135,11 @@ class PythonRequest(OperationRequestFoundation):
         os_provider: OsProvider,
         python_utils: PythonUtils,
         time_ops: TimeProvider,
-        name: Optional[str] = None,
-        timeout: Optional[float] = None,
-        environment: Optional[dict] = None,
-        python_path: Optional[str] = None,
-        debug_tag: Optional[str] = None
+        name: Optional[str],
+        timeout: Optional[float],
+        environment: Optional[dict],
+        python_path: Optional[str],
+        debug_tag: Optional[str]
     ):
         """Initialize Python request with provided parameters."""
         super().__init__(name or script_or_code, debug_tag)
@@ -250,18 +250,18 @@ class DockerRequest(OperationRequestFoundation):
         operation: DockerOpType,
         json_provider: JsonProvider,
         working_directory: str,
-        name: Optional[str] = None,
-        image_name: Optional[str] = None,
-        container_name: Optional[str] = None,
-        dockerfile_path: Optional[str] = None,
-        build_args: Optional[dict] = None,
-        run_args: Optional[dict] = None,
-        command: Optional[Union[str, List[str]]] = None,
-        environment: Optional[dict] = None,
-        volumes: Optional[dict] = None,
-        ports: Optional[dict] = None,
-        network: Optional[str] = None,
-        debug_tag: Optional[str] = None
+        name: Optional[str],
+        image_name: Optional[str],
+        container_name: Optional[str],
+        dockerfile_path: Optional[str],
+        build_args: Optional[dict],
+        run_args: Optional[dict],
+        command: Optional[Union[str, List[str]]],
+        environment: Optional[dict],
+        volumes: Optional[dict],
+        ports: Optional[dict],
+        network: Optional[str],
+        debug_tag: Optional[str]
     ):
         """Initialize Docker request with provided parameters."""
         super().__init__(name or f"Docker {operation.name}", debug_tag)
@@ -270,12 +270,12 @@ class DockerRequest(OperationRequestFoundation):
         self.image_name = image_name
         self.container_name = container_name
         self.dockerfile_path = dockerfile_path
-        self.build_args = build_args or {}
-        self.run_args = run_args or {}
+        self.build_args = build_args if build_args is not None else {}
+        self.run_args = run_args if run_args is not None else {}
         self.command = command
-        self.environment = environment or {}
-        self.volumes = volumes or {}
-        self.ports = ports or {}
+        self.environment = environment if environment is not None else {}
+        self.volumes = volumes if volumes is not None else {}
+        self.ports = ports if ports is not None else {}
         self.network = network
         self._json_provider = json_provider
 
@@ -527,12 +527,12 @@ class FileRequest(OperationRequestFoundation):
         operation: FileOpType,
         path: str,
         time_ops: TimeProvider,
-        name: Optional[str] = None,
-        content: Optional[str] = None,
-        destination: Optional[str] = None,
-        encoding: Optional[str] = None,
-        allow_failure: bool = False,
-        debug_tag: Optional[str] = None
+        name: Optional[str],
+        content: Optional[str],
+        destination: Optional[str],
+        encoding: Optional[str],
+        allow_failure: bool,
+        debug_tag: Optional[str]
     ):
         """Initialize file request with provided parameters."""
         super().__init__(name or f"{operation.value} {path}", debug_tag)
@@ -540,7 +540,7 @@ class FileRequest(OperationRequestFoundation):
         self.path = path
         self.content = content
         self.destination = destination
-        self.encoding = encoding or 'utf-8'
+        self.encoding = encoding if encoding is not None else 'utf-8'
         self.allow_failure = allow_failure
         self._time_ops = time_ops
 

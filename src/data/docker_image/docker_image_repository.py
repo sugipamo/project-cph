@@ -170,7 +170,7 @@ class DockerImageRepository(DatabaseRepositoryFoundation):
             cursor = conn.execute(query)
             return [dict(row) for row in cursor.fetchall()]
 
-    def find_unused_images(self, days: int = 30) -> List[Dict[str, Any]]:
+    def find_unused_images(self, days: int) -> List[Dict[str, Any]]:
         """Find images not used for specified number of days."""
         query = """
             SELECT * FROM docker_images

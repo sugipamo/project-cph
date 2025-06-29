@@ -38,7 +38,7 @@ class OutputManagerInterface(ABC):
     """Interface for output management."""
 
     @abstractmethod
-    def add(self, message: str, level: str, format_info: Optional[Any] = None, execution_detail: Optional[Any] = None) -> None:
+    def add(self, message: str, level: str, format_info: Optional[Any], execution_detail: Optional[Any]) -> None:
         """Add a log entry."""
         pass
 
@@ -53,12 +53,12 @@ class OutputManagerInterface(ABC):
         pass
 
     @abstractmethod
-    def flush(self, use_old_format: bool = False) -> None:
+    def flush(self, use_old_format: bool) -> None:
         """Flush output to console."""
         pass
 
     @abstractmethod
-    def flatten(self, depth: int = 0) -> List[Tuple[int, Any]]:
+    def flatten(self, depth: int) -> List[Tuple[int, Any]]:
         """Get flattened log entries."""
         pass
 

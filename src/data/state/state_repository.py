@@ -26,7 +26,7 @@ class IStateRepository(ABC):
         pass
 
     @abstractmethod
-    def get_execution_history(self, limit: int=10) -> list[ExecutionHistory]:
+    def get_execution_history(self, limit: int) -> list[ExecutionHistory]:
         """実行履歴の取得
 
         Args:

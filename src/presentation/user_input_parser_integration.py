@@ -7,7 +7,7 @@ from typing import Any, Dict
 class UserInputParserIntegration:
     """user_input_parser.pyでの新設定システム統合"""
 
-    def __init__(self, config_manager, contest_env_dir: str = "./contest_env", system_config_dir: str = "./config/system"):
+    def __init__(self, config_manager, contest_env_dir: str, system_config_dir: str):
         """初期化
 
         Args:

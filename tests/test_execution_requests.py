@@ -271,7 +271,12 @@ class TestPythonRequest:
             working_directory="/tmp",
             os_provider=Mock(),
             python_utils=Mock(),
-            time_ops=Mock()
+            time_ops=Mock(),
+            name=None,
+            timeout=None,
+            environment=None,
+            python_path=None,
+            debug_tag=None
         )
         
         assert request.operation_type == OperationType.PYTHON
@@ -306,7 +311,12 @@ class TestPythonRequest:
             working_directory="/tmp",
             os_provider=os_provider,
             python_utils=python_utils,
-            time_ops=time_ops
+            time_ops=time_ops,
+            name=None,
+            timeout=None,
+            environment=None,
+            python_path=None,
+            debug_tag=None
         )
         
         result = request._execute_core(driver, logger)
@@ -347,7 +357,12 @@ class TestPythonRequest:
             working_directory="/tmp",
             os_provider=os_provider,
             python_utils=python_utils,
-            time_ops=time_ops
+            time_ops=time_ops,
+            name=None,
+            timeout=None,
+            environment=None,
+            python_path=None,
+            debug_tag=None
         )
         
         result = request._execute_core(driver, logger)
@@ -419,7 +434,19 @@ class TestDockerRequest:
         request = DockerRequest(
             operation=DockerOpType.RUN,
             json_provider=Mock(),
-            working_directory="/tmp"
+            working_directory="/tmp",
+            name=None,
+            image_name=None,
+            container_name=None,
+            dockerfile_path=None,
+            build_args=None,
+            run_args=None,
+            command=None,
+            environment=None,
+            volumes=None,
+            ports=None,
+            network=None,
+            debug_tag=None
         )
         
         assert request.operation_type == OperationType.DOCKER
@@ -468,7 +495,19 @@ class TestDockerRequest:
         request = DockerRequest(
             operation=DockerOpType.BUILD,
             json_provider=Mock(),
-            working_directory="/project"
+            working_directory="/project",
+            name=None,
+            image_name=None,
+            container_name=None,
+            dockerfile_path=None,
+            build_args=None,
+            run_args=None,
+            command=None,
+            environment=None,
+            volumes=None,
+            ports=None,
+            network=None,
+            debug_tag=None
         )
         
         with pytest.raises(DockerOperationError, match="Image name is required"):
@@ -536,7 +575,19 @@ class TestDockerRequest:
         request = DockerRequest(
             operation=DockerOpType.RUN,
             json_provider=Mock(),
-            working_directory="/project"
+            working_directory="/project",
+            name=None,
+            image_name=None,
+            container_name=None,
+            dockerfile_path=None,
+            build_args=None,
+            run_args=None,
+            command=None,
+            environment=None,
+            volumes=None,
+            ports=None,
+            network=None,
+            debug_tag=None
         )
         
         params = {
@@ -603,7 +654,13 @@ class TestFileRequest:
         request = FileRequest(
             operation=FileOpType.WRITE,
             path="/tmp/test.txt",
-            time_ops=Mock()
+            time_ops=Mock(),
+            name=None,
+            content=None,
+            destination=None,
+            encoding=None,
+            allow_failure=False,
+            debug_tag=None
         )
         
         assert request.operation_type == OperationType.FILE
@@ -622,7 +679,12 @@ class TestFileRequest:
             operation=FileOpType.READ,
             path="/tmp/test.txt",
             time_ops=time_ops,
-            encoding="utf-8"
+            name=None,
+            content=None,
+            destination=None,
+            encoding="utf-8",
+            allow_failure=False,
+            debug_tag=None
         )
         
         result = request._execute_core(driver, logger)
@@ -643,8 +705,12 @@ class TestFileRequest:
             operation=FileOpType.WRITE,
             path="/tmp/test.txt",
             time_ops=time_ops,
+            name=None,
             content="new content",
-            encoding="utf-8"
+            destination=None,
+            encoding="utf-8",
+            allow_failure=False,
+            debug_tag=None
         )
         
         result = request._execute_core(driver, logger)
@@ -664,7 +730,13 @@ class TestFileRequest:
         request = FileRequest(
             operation=FileOpType.WRITE,
             path="/tmp/test.txt",
-            time_ops=time_ops
+            time_ops=time_ops,
+            name=None,
+            content=None,
+            destination=None,
+            encoding=None,
+            allow_failure=False,
+            debug_tag=None
         )
         
         with pytest.raises(ValueError, match="Content is required"):
@@ -682,7 +754,13 @@ class TestFileRequest:
         request = FileRequest(
             operation=FileOpType.EXISTS,
             path="/tmp/test.txt",
-            time_ops=time_ops
+            time_ops=time_ops,
+            name=None,
+            content=None,
+            destination=None,
+            encoding=None,
+            allow_failure=False,
+            debug_tag=None
         )
         
         result = request._execute_core(driver, logger)
@@ -702,8 +780,13 @@ class TestFileRequest:
         request = FileRequest(
             operation=FileOpType.COPY,
             path="/tmp/source.txt",
+            time_ops=time_ops,
+            name=None,
+            content=None,
             destination="/tmp/dest.txt",
-            time_ops=time_ops
+            encoding=None,
+            allow_failure=False,
+            debug_tag=None
         )
         
         result = request._execute_core(driver, logger)
@@ -725,7 +808,12 @@ class TestFileRequest:
             operation=FileOpType.READ,
             path="/tmp/missing.txt",
             time_ops=time_ops,
-            allow_failure=True
+            name=None,
+            content=None,
+            destination=None,
+            encoding=None,
+            allow_failure=True,
+            debug_tag=None
         )
         
         result = request._execute_core(driver, logger)
@@ -748,7 +836,12 @@ class TestFileRequest:
             operation=FileOpType.READ,
             path="/tmp/missing.txt",
             time_ops=time_ops,
-            allow_failure=False
+            name=None,
+            content=None,
+            destination=None,
+            encoding=None,
+            allow_failure=False,
+            debug_tag=None
         )
         
         with pytest.raises(IOError, match="File not found"):
@@ -769,7 +862,13 @@ class TestFileRequest:
         request = FileRequest(
             operation=FileOpType.READ,
             path="/tmp/test.txt",
-            time_ops=time_ops
+            time_ops=time_ops,
+            name=None,
+            content=None,
+            destination=None,
+            encoding=None,
+            allow_failure=False,
+            debug_tag=None
         )
         
         resolved_driver = request._resolve_driver(driver_without_file_ops)
@@ -785,7 +884,13 @@ class TestFileRequest:
         request = FileRequest(
             operation=FileOpType.READ,
             path="/tmp/test.txt",
-            time_ops=time_ops
+            time_ops=time_ops,
+            name=None,
+            content=None,
+            destination=None,
+            encoding=None,
+            allow_failure=False,
+            debug_tag=None
         )
         
         resolved_driver = request._resolve_driver(driver_with_file_ops)

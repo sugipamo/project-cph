@@ -13,7 +13,7 @@ from src.presentation.user_input_parser import parse_user_input
 class MinimalCLIApp:
     """Minimal CLI application with essential features"""
 
-    def __init__(self, infrastructure, logger, config_manager=None):
+    def __init__(self, infrastructure, logger, config_manager):
         """Initialize minimal CLI application
 
         Args:

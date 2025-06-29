@@ -151,7 +151,7 @@ class MockSQLiteConnection:
         self.database = database
         self._provider = provider
 
-    def execute(self, sql: str, parameters: Tuple = ()) -> Any:
+    def execute(self, sql: str, parameters: Tuple) -> Any:
         """SQLite互換のexecuteメソッド"""
         return self._provider.execute_sql_statement(self, sql, parameters)
 

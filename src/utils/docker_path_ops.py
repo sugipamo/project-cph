@@ -68,7 +68,7 @@ class DockerPathOperations:
     @staticmethod
     def get_docker_mount_path_from_config(env_json: dict,
                                         language: str,
-                                        default_mount_path: str = "/workspace") -> str:
+                                        default_mount_path: str) -> str:
         """設定からDockerマウントパスを取得
 
         Args:

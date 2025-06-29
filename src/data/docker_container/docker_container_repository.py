@@ -153,7 +153,7 @@ class DockerContainerRepository(DatabaseRepositoryFoundation):
             cursor = conn.execute(query, (language,))
             return [self._parse_result(row) for row in cursor.fetchall()]
 
-    def find_unused_containers(self, days: int = 7) -> List[Dict[str, Any]]:
+    def find_unused_containers(self, days: int) -> List[Dict[str, Any]]:
         """Find containers not used for specified number of days."""
         query = """
             SELECT * FROM docker_containers
@@ -220,7 +220,7 @@ class DockerContainerRepository(DatabaseRepositoryFoundation):
     def get_container_events(
         self,
         container_name: str,
-        limit: int = 100
+        limit: int
     ) -> List[Dict[str, Any]]:
         """Get lifecycle events for a container."""
         query = """

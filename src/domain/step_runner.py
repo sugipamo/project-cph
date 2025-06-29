@@ -361,7 +361,6 @@ def create_step(json_step: Dict[str, Any], context) -> 'Step':
     expanded_cmd = [expand_template(arg, context) for arg in raw_cmd]
 
     # CLAUDE.mdに従い、設定ファイルからデフォルト値を取得
-    from src.configuration.config_resolver import resolve_best
     config_root = context.config_root if hasattr(context, 'config_root') else None
     
     # デフォルト値を設定から取得

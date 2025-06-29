@@ -177,7 +177,7 @@ def build_docker_stop_command(name: str, timeout: int) -> list[str]:
     return cmd
 
 
-def build_docker_remove_command(name: str, force: bool = False, volumes: bool = False) -> list[str]:
+def build_docker_remove_command(name: str, force: bool, volumes: bool) -> list[str]:
     """Build docker remove command
 
     Args:

@@ -30,13 +30,14 @@ class TestMinimalCLIApp:
         logger = Mock()
         logger.output_manager = Mock()
         logger.output_manager.flush = Mock()
+        config_manager = Mock()
         
         with pytest.raises(ValueError, match="Infrastructure must be injected"):
-            MinimalCLIApp(None, logger)
+            MinimalCLIApp(None, logger, config_manager)
 
     def test_run_cli_application_without_infrastructure(self):
         """Test run fails without infrastructure."""
-        app = MinimalCLIApp(Mock(), Mock())
+        app = MinimalCLIApp(Mock(), Mock(), Mock())
         app.infrastructure = None
         
         with pytest.raises(RuntimeError, match="Infrastructure not injected"):
@@ -101,7 +102,7 @@ class TestMinimalCLIApp:
             warnings=[]
         )
         
-        app = MinimalCLIApp(infrastructure, logger)
+        app = MinimalCLIApp(infrastructure, logger, Mock())
         
         # Mock the workflow execution
         with patch.object(app, '_execute_workflow', return_value=mock_result):
@@ -119,7 +120,7 @@ class TestMinimalCLIApp:
         infrastructure._services = [mock_service]
         infrastructure.resolve.return_value = Mock()
         
-        app = MinimalCLIApp(infrastructure, None)
+        app = MinimalCLIApp(infrastructure, None, Mock())
         result = app._initialize_logger()
         
         assert result is True
@@ -131,7 +132,7 @@ class TestMinimalCLIApp:
         infrastructure = Mock()
         infrastructure._services = []
         
-        app = MinimalCLIApp(infrastructure, None)
+        app = MinimalCLIApp(infrastructure, None, Mock())
         
         with pytest.raises(RuntimeError, match="Logger dependency not registered"):
             app._initialize_logger()
@@ -145,7 +146,7 @@ class TestMinimalCLIApp:
         infrastructure._services = [mock_service]
         infrastructure.resolve.return_value = None
         
-        app = MinimalCLIApp(infrastructure, None)
+        app = MinimalCLIApp(infrastructure, None, Mock())
         
         with pytest.raises(RuntimeError, match="Logger initialization failed"):
             app._initialize_logger()
@@ -171,7 +172,7 @@ class TestMinimalCLIApp:
         mock_service.execute_workflow.return_value = mock_result
         mock_service_class.return_value = mock_service
         
-        app = MinimalCLIApp(infrastructure, logger)
+        app = MinimalCLIApp(infrastructure, logger, Mock())
         app.context = context
         
         result = app._execute_workflow()
@@ -194,7 +195,7 @@ class TestMinimalCLIApp:
             warnings=["Warning 1"]
         )
         
-        app = MinimalCLIApp(Mock(), logger)
+        app = MinimalCLIApp(Mock(), logger, Mock())
         app._present_results(result)
         
         logger.error.assert_any_call("ワークフローエラー: Error 1")
@@ -215,7 +216,7 @@ class TestMinimalCLIApp:
             warnings=[]
         )
         
-        app = MinimalCLIApp(Mock(), logger)
+        app = MinimalCLIApp(Mock(), logger, Mock())
         app._present_results(result)
         
         logger.error.assert_not_called()
@@ -234,7 +235,7 @@ class TestMinimalCLIApp:
         context = Mock()
         context.__dict__ = {"test": "data"}
         
-        app = MinimalCLIApp(infrastructure, logger)
+        app = MinimalCLIApp(infrastructure, logger, Mock())
         app.context = context
         
         app._handle_debug_mode()
@@ -254,7 +255,7 @@ class TestMinimalCLIApp:
         context = Mock()
         context.__dict__ = {"test": "data"}
         
-        app = MinimalCLIApp(infrastructure, logger)
+        app = MinimalCLIApp(infrastructure, logger, Mock())
         app.context = context
         
         app._handle_debug_mode()
@@ -272,7 +273,7 @@ class TestMinimalCLIApp:
         logger.output_manager.flush = Mock()
         context = Mock()
         
-        app = MinimalCLIApp(infrastructure, logger)
+        app = MinimalCLIApp(infrastructure, logger, Mock())
         app.context = context
         
         with pytest.raises(RuntimeError, match="デバッグ処理に失敗"):
@@ -283,7 +284,7 @@ class TestMinimalCLIApp:
         result = Mock()
         result.get_error_output.return_value = "Error output"
         
-        app = MinimalCLIApp(Mock(), Mock())
+        app = MinimalCLIApp(Mock(), Mock(), Mock())
         output = app._get_error_output_safely(result)
         
         assert output == "Error output"
@@ -292,7 +293,7 @@ class TestMinimalCLIApp:
         """Test getting error output when method not available."""
         result = Mock(spec=[])  # No get_error_output method
         
-        app = MinimalCLIApp(Mock(), Mock())
+        app = MinimalCLIApp(Mock(), Mock(), Mock())
         output = app._get_error_output_safely(result)
         
         assert output is None
@@ -302,7 +303,7 @@ class TestMinimalCLIApp:
         result = Mock()
         result.get_error_output.return_value = None
         
-        app = MinimalCLIApp(Mock(), Mock())
+        app = MinimalCLIApp(Mock(), Mock(), Mock())
         output = app._get_error_output_safely(result)
         
         assert output is None
@@ -320,7 +321,7 @@ class TestMinimalCLIApp:
         
         exception = CompositeStepFailureError("Test failure", result=result, original_exception=original_exception, error_code=None, context="")
         
-        app = MinimalCLIApp(Mock(), logger)
+        app = MinimalCLIApp(Mock(), logger, Mock())
         exit_code = app._handle_composite_step_failure(exception)
         
         assert exit_code == 1
@@ -340,7 +341,7 @@ class TestMinimalCLIApp:
         exception = CompositeStepFailureError("Test failure", result=None, original_exception=None, error_code=None, context="")
         exception.result = None
         
-        app = MinimalCLIApp(Mock(), logger)
+        app = MinimalCLIApp(Mock(), logger, Mock())
         exit_code = app._handle_composite_step_failure(exception)
         
         assert exit_code == 1
@@ -365,7 +366,7 @@ class TestMinimalCLIApp:
         exception = Exception("Test error")
         args = ["test", "command"]
         
-        app = MinimalCLIApp(Mock(), logger)
+        app = MinimalCLIApp(Mock(), logger, Mock())
         exit_code = app._handle_general_exception(exception, args)
         
         assert exit_code == 1
@@ -395,7 +396,7 @@ class TestMinimalCLIApp:
         exception = Exception("Test error")
         args = ["test", "--debug", "command"]
         
-        app = MinimalCLIApp(Mock(), logger)
+        app = MinimalCLIApp(Mock(), logger, Mock())
         exit_code = app._handle_general_exception(exception, args)
         
         assert exit_code == 1

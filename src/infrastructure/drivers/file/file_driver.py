@@ -311,8 +311,8 @@ class FileDriver(BaseDriverImplementation):
     # Docker-specific operations
 
     def docker_cp(self, container_name: str, container_path: str,
-                  host_path: Union[str, Path], from_container: bool = True,
-                  docker_driver: Optional[Any] = None) -> None:
+                  host_path: Union[str, Path], from_container: bool,
+                  docker_driver: Any) -> None:
         """Copy files between container and host using docker cp.
         
         Args:

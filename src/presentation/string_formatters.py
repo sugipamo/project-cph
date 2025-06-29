@@ -44,7 +44,7 @@ def extract_missing_template_keys(template: str, available_keys: set, regex_ops:
     return [key for key in found_keys if key not in available_keys]
 
 
-def is_potential_script_path(code_or_file: list[str], script_extensions: Optional[list[str]] = None) -> bool:
+def is_potential_script_path(code_or_file: list[str], script_extensions: Optional[list[str]]) -> bool:
     """Pure function to determine if input looks like a script file path
 
     Args:

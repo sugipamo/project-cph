@@ -32,7 +32,7 @@ class SystemTimeProvider(TimeProvider):
 class MockTimeProvider(TimeProvider):
     """テスト用モック時刻プロバイダー - 副作用なし"""
 
-    def __init__(self, initial_time: float = 0.0):
+    def __init__(self, initial_time: float):
         self._current_time = initial_time
         self._sleep_calls = []
 

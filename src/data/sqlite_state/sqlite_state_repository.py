@@ -31,7 +31,7 @@ class SqliteStateRepository(IStateRepository):
         value = self._json_provider.dumps(history_data)
         self.config_repo.set_config(key=key, value=value, category=self._history_category, description=f'Execution history for {history.contest_name}_{history.problem_name}')
 
-    def get_execution_history(self, limit: int=10) -> list[ExecutionHistory]:
+    def get_execution_history(self, limit: int) -> list[ExecutionHistory]:
         """実行履歴の取得"""
         histories = self.config_repo.get_configs_by_category(self._history_category)
         result = []

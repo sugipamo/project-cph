@@ -263,7 +263,7 @@ class ErrorSuggestion:
         return recovery_actions[error_code]
 
 
-def classify_error(exception: Exception, context: str = "") -> ErrorCode:
+def classify_error(exception: Exception, context: str) -> ErrorCode:
     """Classify an exception into a standard error code."""
     error_message = str(exception).lower()
 

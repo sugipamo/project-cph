@@ -187,6 +187,6 @@ class TestDockerPathOperations:
             """Test default mount path value when not provided."""
             env_json = {"python": {"version": "3.9"}}
             result = DockerPathOperations.get_docker_mount_path_from_config(
-                env_json, "python"
+                env_json, "python", "/workspace"
             )
-            assert result == "/workspace"  # Default value in function signature
+            assert result == "/workspace"  # Default value

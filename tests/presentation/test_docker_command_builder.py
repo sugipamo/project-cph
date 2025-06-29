@@ -228,15 +228,15 @@ class TestDockerCommandBuilder:
     def test_build_docker_remove_command(self):
         """Test building docker remove command."""
         # Basic remove
-        cmd = build_docker_remove_command("my-container")
+        cmd = build_docker_remove_command("my-container", False, False)
         assert cmd == ["docker", "rm", "my-container"]
         
         # Force remove
-        cmd = build_docker_remove_command("my-container", force=True)
+        cmd = build_docker_remove_command("my-container", force=True, volumes=False)
         assert cmd == ["docker", "rm", "-f", "my-container"]
         
         # Remove with volumes
-        cmd = build_docker_remove_command("my-container", volumes=True)
+        cmd = build_docker_remove_command("my-container", force=False, volumes=True)
         assert cmd == ["docker", "rm", "-v", "my-container"]
         
         # Force remove with volumes

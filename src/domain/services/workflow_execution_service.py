@@ -241,7 +241,7 @@ class WorkflowExecutionService:
         # TODO: Restore preparation functionality when PreparationExecutor is available
         return preparation_results, []
 
-    def _execute_main_workflow(self, operations_composite, use_parallel=False, max_workers=4):
+    def _execute_main_workflow(self, operations_composite, use_parallel, max_workers):
         """Execute the main workflow operations."""
 
         # Get logger and config manager from infrastructure
