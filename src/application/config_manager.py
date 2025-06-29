@@ -36,24 +36,28 @@ class TypedExecutionConfiguration:
         """テンプレート文字列を解決"""
         # ConfigNodeを使用した高度なテンプレート解決
         if self._root_node is not None:
+            # regex_opsのインポート
+            from src.utils.regex_provider import RegexProvider
+            regex_ops = RegexProvider()
+            
             return resolve_formatted_string(template, self._root_node, {
                 'contest_name': self.contest_name,
                 'problem_name': self.problem_name,
                 'language': self.language,
                 'env_type': self.env_type,
                 'command_type': self.command_type
-            })
+            }, regex_ops)
 
         # 基本的な変数置換のみ（フォールバック）
         context = {
-            'contest_name': self.contest_name,
-            'problem_name': self.problem_name,
-            'language': self.language,
-            'env_type': self.env_type,
-            'command_type': self.command_type,
-            'local_workspace_path': str(self.local_workspace_path),
-            'contest_current_path': str(self.contest_current_path if hasattr(self, 'contest_current_path') else ''),
-            'timeout_seconds': str(self.timeout_seconds if hasattr(self, 'timeout_seconds') else ''),
+            'contest_name': self.contest_name if hasattr(self, 'contest_name') else '',
+            'problem_name': self.problem_name if hasattr(self, 'problem_name') else '',
+            'language': self.language if hasattr(self, 'language') else '',
+            'env_type': self.env_type if hasattr(self, 'env_type') else '',
+            'command_type': self.command_type if hasattr(self, 'command_type') else '',
+            'local_workspace_path': str(self.local_workspace_path) if hasattr(self, 'local_workspace_path') else '',
+            'contest_current_path': str(self.contest_current_path) if hasattr(self, 'contest_current_path') else '',
+            'timeout_seconds': str(self.timeout_seconds) if hasattr(self, 'timeout_seconds') else '',
             'language_id': self.language_id if hasattr(self, 'language_id') else '',
             'source_file_name': self.source_file_name if hasattr(self, 'source_file_name') else '',
             'run_command': self.run_command if hasattr(self, 'run_command') else '',
@@ -244,9 +248,18 @@ class FileLoader:
 
     def _load_language_config(self, contest_env_dir: Path, language: str) -> dict:
         """言語固有設定の読み込み（EnvConfigLoader統合）"""
-        # 言語ディレクトリ内のenv.json
+        file_provider = self._get_file_provider()
+        if file_provider is None:
+            # フォールバック: 直接Path操作
+            language_path = contest_env_dir / language / "env.json"
+            if language_path.exists():
+                return self.load_json_file(str(language_path))
+            fallback_path = contest_env_dir / f"{language}.json"
+            return self.load_json_file(str(fallback_path))
+        
+        # file_providerを使用
         language_path = contest_env_dir / language / "env.json"
-        if language_path.exists():
+        if file_provider.exists(language_path):
             return self.load_json_file(str(language_path))
 
         # fallback: 言語名.json形式
@@ -494,7 +507,9 @@ class TypeSafeConfigNodeManager:
             return self._convert_to_type(cached_result, return_type)
 
         # ConfigNodeでの展開
-        expanded = resolve_formatted_string(template, self.root_node, context)
+        from src.utils.regex_provider import RegexProvider
+        regex_ops = RegexProvider()
+        expanded = resolve_formatted_string(template, self.root_node, context, regex_ops)
         converted = self._convert_to_type(expanded, return_type)
 
         # キャッシュに保存
@@ -598,7 +613,7 @@ class TypeSafeConfigNodeManager:
         for path in workspace_paths:
             try:
                 return self.resolve_config(path, str)
-            except (KeyError, TypeError):
+            except (KeyError, TypeError, ValueError):
                 continue
 
         raise KeyError("ワークスペースパスの設定が見つかりません。以下のいずれかの設定が必要です: paths.local_workspace_path, workspace, local_workspace_path, base_path")
@@ -635,7 +650,7 @@ class TypeSafeConfigNodeManager:
 
     def _cache_execution_config(self, cache_key: tuple, config: TypedExecutionConfiguration) -> None:
         """ExecutionConfigをキャッシュ"""
-        if len(self._execution_config_cache) > 1000:
+        if len(self._execution_config_cache) >= 1000:
             oldest_key = next(iter(self._execution_config_cache))
             del self._execution_config_cache[oldest_key]
         self._execution_config_cache[cache_key] = config
@@ -652,7 +667,7 @@ class TypeSafeConfigNodeManager:
         for path in debug_paths:
             try:
                 return self.resolve_config(path, bool)
-            except (KeyError, TypeError):
+            except (KeyError, TypeError, ValueError):
                 continue
 
         raise ConfigurationError("デバッグモード設定の取得に失敗しました。設定ファイルを確認してください")

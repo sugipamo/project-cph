@@ -72,9 +72,11 @@ class TestSQLiteManager:
         mock_migration_file.name = "001_initial_schema.sql"
         
         # Mock the open method on the migration file
-        mock_file_handle = Mock()
+        mock_file_handle = MagicMock()
         mock_file_handle.read.return_value = "CREATE TABLE test (id INTEGER);"
-        mock_migration_file.open.return_value.__enter__.return_value = mock_file_handle
+        mock_file_handle.__enter__.return_value = mock_file_handle
+        mock_file_handle.__exit__.return_value = None
+        mock_migration_file.open.return_value = mock_file_handle
         
         mock_glob.return_value = [mock_migration_file]
         

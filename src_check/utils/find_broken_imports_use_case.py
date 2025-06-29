@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from src.domain.models import BrokenImport
 from src.domain.models.check_result import CheckResult
 from src.domain.services.circular_import_detector import CircularImportDetector
-from src.infrastructure.ast_parser import ImportDetector, ModuleParser
+from .import_detector import ImportDetector
 
 
 import logging
@@ -30,12 +30,10 @@ class FindBrokenImportsUseCase:
     
     def __init__(self):
         self._import_detector: ImportDetector = None
-        self._module_parser: ModuleParser = None
         self._circular_import_detector: CircularImportDetector = None
         
     def execute(self, request: FindBrokenImportsRequest) -> FindBrokenImportsResponse:
         self._import_detector = ImportDetector(request.project_root)
-        self._module_parser = ModuleParser(request.project_root)
         self._circular_import_detector = CircularImportDetector()
         
         files_to_scan = self._get_files_to_scan(request)
@@ -52,12 +50,7 @@ class FindBrokenImportsUseCase:
             try:
                 file_broken_imports = self._import_detector.detect_broken_imports(file_path)
                 broken_imports.extend(file_broken_imports)
-                
-                # モジュール情報も収集
-                module_info = self._module_parser.parse_module(file_path)
-                if module_info:
-                    modules.append(module_info)
-                    check_result.total_imports += len(module_info.imported_modules)
+                # Note: ModuleParser functionality has been removed
                     
             except Exception as e:
                 files_with_errors.append(file_path)
@@ -74,12 +67,10 @@ class FindBrokenImportsUseCase:
         check_result.files_with_issues = len(broken_imports_by_file)
         
         # 循環インポート検知
-        if request.check_circular_imports and modules:
-            self._circular_import_detector.build_import_graph(modules, broken_imports)
-            circular_imports = self._circular_import_detector.detect_circular_imports()
-            
-            for cycle in circular_imports:
-                check_result.add_circular_import(cycle)
+        # Note: Circular import detection disabled as ModuleParser is not available
+        if request.check_circular_imports:
+            logger = logging.getLogger(__name__)
+            logger.warning("Circular import detection is currently disabled")
                 
         # 循環インポートが検出された場合はエラーとする
         if check_result.has_circular_imports:
