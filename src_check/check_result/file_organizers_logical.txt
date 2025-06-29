@@ -1,27 +1,15 @@
 === file_organizers_logical ===
 
-失敗箇所: 16件
+失敗箇所: 4件
 ----------------------------------------
-1. /home/cphelper/project-cph/src/domain/config_node_service.py:0
-2. /home/cphelper/project-cph/src/operations/requests/base_request.py:0
-3. /home/cphelper/project-cph/src/operations/interfaces/__init__.py:0
-4. /home/cphelper/project-cph/src/operations/requests/__init__.py:0
-5. /home/cphelper/project-cph/src/operations/results/__init__.py:0
-6. /home/cphelper/project-cph/src/operations/requests/execution_requests.py:0
-7. /home/cphelper/project-cph/src/operations/results/execution_results.py:0
-8. /home/cphelper/project-cph/src/utils/log_format_type.py:0
-9. /home/cphelper/project-cph/src/utils/log_types.py:0
-10. /home/cphelper/project-cph/src/infrastructure/drivers/base_driver.py:0
-11. /home/cphelper/project-cph/src/infrastructure/drivers/docker_driver.py:0
-12. /home/cphelper/project-cph/src/infrastructure/drivers/execution_driver.py:0
-13. /home/cphelper/project-cph/src/infrastructure/drivers/file_driver.py:0
-14. /home/cphelper/project-cph/src/infrastructure/providers/docker_naming_provider.py:0
-15. /home/cphelper/project-cph/src/infrastructure/specialized_drivers/persistence_driver.py:0
-16. /home/cphelper/project-cph/src/infrastructure/specialized_drivers/unified_driver.py:0
+1. /home/cphelper/project-cph/src/utils/log_format_type.py:0
+2. /home/cphelper/project-cph/src/utils/log_types.py:0
+3. /home/cphelper/project-cph/src/infrastructure/di_container_adapter.py:0
+4. /home/cphelper/project-cph/src/domain/__init__.py:0
 
 修正方針:
 --------------------
-16個のファイルを論理的なフォルダ構造に再配置します。
+4個のファイルを論理的なフォルダ構造に再配置します。
 影響を受けるインポート: 0箇所
 
 修正例:
@@ -32,4 +20,4 @@
 # services/
 # utils/
 
-実行時刻: 2025-06-28 10:58:37
+実行時刻: 2025-06-29 02:14:51

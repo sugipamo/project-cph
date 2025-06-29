@@ -92,7 +92,7 @@ class WorkflowLoggerAdapter:
         executing_message = f'  {executing_icon} 実行中...'
         self.output_manager.add(executing_message, LogLevel.INFO, formatinfo=FormatInfo(color='blue'))
 
-    def step_success(self, step_name: str, message: str='') -> None:
+    def step_success(self, step_name: str, message: str) -> None:
         """ステップ成功ログ"""
         if not self.enabled:
             return
@@ -102,7 +102,7 @@ class WorkflowLoggerAdapter:
             success_message += f' - {message}'
         self.output_manager.add(success_message, LogLevel.INFO, formatinfo=FormatInfo(color='green', bold=True))
 
-    def step_failure(self, step_name: str, error: str, allow_failure: bool=False) -> None:
+    def step_failure(self, step_name: str, error: str, allow_failure: bool) -> None:
         """ステップ失敗ログ"""
         if not self.enabled:
             return
@@ -127,7 +127,7 @@ class WorkflowLoggerAdapter:
             message = f'\n{icon} 環境準備開始: {task_count}タスク'
             self.output_manager.add(message, LogLevel.INFO, formatinfo=FormatInfo(color='blue', bold=True))
 
-    def log_workflow_start(self, step_count: int, parallel: bool=False) -> None:
+    def log_workflow_start(self, step_count: int, parallel: bool) -> None:
         """ワークフロー実行開始ログ"""
         if self.enabled:
             icon = self.icons['start']

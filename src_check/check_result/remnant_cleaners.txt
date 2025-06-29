@@ -1,9 +1,20 @@
 === remnant_cleaners ===
 
-失敗箇所: なし
+失敗箇所: 2件
+----------------------------------------
+1. /home/cphelper/project-cph/src/infrastructure/providers:0
+2. /home/cphelper/project-cph/src/infrastructure/specialized_drivers:0
 
 修正方針:
 --------------------
-残骸フォルダは見つかりませんでした。
+2個の残骸フォルダが検出されました。
+__pycache__および__init__.pyのみが存在するフォルダを削除します。
 
-実行時刻: 2025-06-28 10:58:37
+修正例:
+--------------------
+# 削除対象フォルダの例:
+src/empty_module/  # __init__.pyのみ
+src/utils/__pycache__/  # __pycache__のみ
+src/old_package/  # __init__.pyと__pycache__のみ
+
+実行時刻: 2025-06-29 02:14:51

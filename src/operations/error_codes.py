@@ -64,15 +64,33 @@ class ErrorSuggestion:
         suggestions = {
             ErrorCode.FILE_NOT_FOUND: "Check if the file path exists and is accessible",
             ErrorCode.FILE_PERMISSION_DENIED: "Verify file permissions or run with appropriate privileges",
+            ErrorCode.FILE_IO_ERROR: "Check disk space and file system health",
+            ErrorCode.DIRECTORY_NOT_FOUND: "Create the directory or check the path",
+            ErrorCode.INVALID_FILE_PATH: "Ensure the file path is valid and properly formatted",
             ErrorCode.COMMAND_NOT_FOUND: "Ensure the command is installed and in PATH",
             ErrorCode.COMMAND_TIMEOUT: "Consider increasing timeout or checking system resources",
+            ErrorCode.COMMAND_PERMISSION_DENIED: "Run with appropriate privileges or check command permissions",
+            ErrorCode.SHELL_EXECUTION_ERROR: "Check command syntax and shell compatibility",
+            ErrorCode.INVALID_COMMAND: "Verify the command syntax is correct",
             ErrorCode.DOCKER_NOT_AVAILABLE: "Start Docker service or check Docker installation",
             ErrorCode.CONTAINER_NOT_FOUND: "Verify container name or create the container first",
             ErrorCode.IMAGE_NOT_FOUND: "Pull the image with 'docker pull <image>' or check image name",
+            ErrorCode.DOCKER_PERMISSION_DENIED: "Add user to docker group or run with sudo",
+            ErrorCode.CONTAINER_ALREADY_RUNNING: "Stop the existing container or use a different name",
+            ErrorCode.CONTAINER_START_FAILED: "Check container logs and configuration",
+            ErrorCode.DOCKERFILE_BUILD_FAILED: "Review Dockerfile syntax and build context",
             ErrorCode.PYTHON_NOT_FOUND: "Install Python or check Python installation path",
+            ErrorCode.PYTHON_SYNTAX_ERROR: "Fix the syntax error in your Python code",
+            ErrorCode.PYTHON_RUNTIME_ERROR: "Debug the runtime error in your Python code",
+            ErrorCode.PYTHON_MODULE_NOT_FOUND: "Install the missing module with pip",
             ErrorCode.CONFIG_NOT_FOUND: "Create configuration file or check file path",
             ErrorCode.CONFIG_PARSE_ERROR: "Check configuration file syntax",
+            ErrorCode.INVALID_CONFIG_VALUE: "Verify configuration values match expected format",
+            ErrorCode.WORKFLOW_DEPENDENCY_FAILED: "Check and fix the failed dependency",
+            ErrorCode.WORKFLOW_STEP_FAILED: "Review the failed step logs for details",
+            ErrorCode.WORKFLOW_TIMEOUT: "Increase workflow timeout or optimize step execution",
             ErrorCode.NETWORK_TIMEOUT: "Check network connection and retry",
+            ErrorCode.NETWORK_CONNECTION_FAILED: "Verify network connectivity and firewall settings",
             ErrorCode.UNKNOWN_ERROR: "An unexpected error occurred. Contact support for assistance",
             ErrorCode.INTERNAL_ERROR: "Internal application error. Please report this issue",
             ErrorCode.VALIDATION_ERROR: "Input validation failed. Check your input parameters",
@@ -88,10 +106,50 @@ class ErrorSuggestion:
                 "Check if the file was moved or deleted",
                 "Ensure you have read permissions for the directory"
             ],
+            ErrorCode.FILE_PERMISSION_DENIED: [
+                "Check file permissions with ls -l",
+                "Run with elevated privileges (sudo)",
+                "Change file permissions with chmod"
+            ],
+            ErrorCode.FILE_IO_ERROR: [
+                "Check available disk space",
+                "Verify file system is not read-only",
+                "Check for file system errors"
+            ],
+            ErrorCode.DIRECTORY_NOT_FOUND: [
+                "Create the directory with mkdir",
+                "Verify the parent directory exists",
+                "Check for typos in the path"
+            ],
+            ErrorCode.INVALID_FILE_PATH: [
+                "Remove special characters from path",
+                "Use absolute paths",
+                "Escape spaces and special characters"
+            ],
             ErrorCode.COMMAND_NOT_FOUND: [
                 "Install the missing command",
                 "Add the command location to PATH",
                 "Use absolute path to the command"
+            ],
+            ErrorCode.COMMAND_TIMEOUT: [
+                "Check system resource usage",
+                "Increase timeout value",
+                "Optimize the command or process"
+            ],
+            ErrorCode.COMMAND_PERMISSION_DENIED: [
+                "Run with sudo or elevated privileges",
+                "Check command file permissions",
+                "Verify user has execution rights"
+            ],
+            ErrorCode.SHELL_EXECUTION_ERROR: [
+                "Check command syntax",
+                "Verify shell compatibility",
+                "Review error output for details"
+            ],
+            ErrorCode.INVALID_COMMAND: [
+                "Check command spelling",
+                "Verify command arguments",
+                "Consult command documentation"
             ],
             ErrorCode.DOCKER_NOT_AVAILABLE: [
                 "Start Docker Desktop or Docker daemon",
@@ -103,10 +161,90 @@ class ErrorSuggestion:
                 "Create the container if it doesn't exist",
                 "Check container name spelling"
             ],
+            ErrorCode.IMAGE_NOT_FOUND: [
+                "Pull the image: docker pull <image>",
+                "Check image name and tag",
+                "Verify registry access"
+            ],
+            ErrorCode.DOCKER_PERMISSION_DENIED: [
+                "Add user to docker group: sudo usermod -aG docker $USER",
+                "Restart terminal session",
+                "Run with sudo (temporary fix)"
+            ],
+            ErrorCode.CONTAINER_ALREADY_RUNNING: [
+                "Stop the container: docker stop <container>",
+                "Use a different container name",
+                "Remove existing container: docker rm <container>"
+            ],
+            ErrorCode.CONTAINER_START_FAILED: [
+                "Check container logs: docker logs <container>",
+                "Verify image compatibility",
+                "Check resource constraints"
+            ],
+            ErrorCode.DOCKERFILE_BUILD_FAILED: [
+                "Review Dockerfile syntax",
+                "Check build context files",
+                "Verify base image availability"
+            ],
+            ErrorCode.PYTHON_NOT_FOUND: [
+                "Install Python from python.org",
+                "Add Python to PATH",
+                "Use python3 instead of python"
+            ],
+            ErrorCode.PYTHON_SYNTAX_ERROR: [
+                "Check for missing colons or brackets",
+                "Verify indentation is consistent",
+                "Use a linter to find syntax issues"
+            ],
+            ErrorCode.PYTHON_RUNTIME_ERROR: [
+                "Check stack trace for error location",
+                "Verify variable initialization",
+                "Add error handling with try/except"
+            ],
+            ErrorCode.PYTHON_MODULE_NOT_FOUND: [
+                "Install module: pip install <module>",
+                "Check virtual environment activation",
+                "Verify module name spelling"
+            ],
+            ErrorCode.CONFIG_NOT_FOUND: [
+                "Create the configuration file",
+                "Copy from template or example",
+                "Check file path and name"
+            ],
+            ErrorCode.CONFIG_PARSE_ERROR: [
+                "Validate JSON/YAML syntax",
+                "Check for missing quotes or commas",
+                "Use a validator tool"
+            ],
+            ErrorCode.INVALID_CONFIG_VALUE: [
+                "Check value types (string vs number)",
+                "Verify value is in allowed range",
+                "Consult configuration documentation"
+            ],
+            ErrorCode.WORKFLOW_DEPENDENCY_FAILED: [
+                "Check dependency logs",
+                "Verify dependency configuration",
+                "Run dependency manually to debug"
+            ],
+            ErrorCode.WORKFLOW_STEP_FAILED: [
+                "Review step logs for errors",
+                "Check step configuration",
+                "Verify prerequisites are met"
+            ],
+            ErrorCode.WORKFLOW_TIMEOUT: [
+                "Increase timeout configuration",
+                "Optimize slow steps",
+                "Split into smaller workflows"
+            ],
             ErrorCode.NETWORK_TIMEOUT: [
                 "Check internet connection",
                 "Verify firewall settings",
                 "Try again with a longer timeout"
+            ],
+            ErrorCode.NETWORK_CONNECTION_FAILED: [
+                "Test network connectivity",
+                "Check proxy configuration",
+                "Verify DNS resolution"
             ],
             ErrorCode.UNKNOWN_ERROR: [
                 "Contact support for assistance"

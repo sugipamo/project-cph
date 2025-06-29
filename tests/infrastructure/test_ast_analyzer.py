@@ -33,7 +33,7 @@ class MyClass:
     pass
 """
         # Act
-        tree = analyzer.parse_source(source_code)
+        tree = analyzer.parse_source(source_code, "<test>")
 
         # Assert
         assert tree is not None
@@ -47,7 +47,7 @@ class MyClass:
         source_code = "def invalid syntax("
 
         # Act
-        tree = analyzer.parse_source(source_code)
+        tree = analyzer.parse_source(source_code, "<test>")
 
         # Assert
         assert tree is None
@@ -108,7 +108,7 @@ import os
 import sys
 import json
 """
-        analyzer.parse_source(source_code)
+        analyzer.parse_source(source_code, "<test>")
 
         # Act
         imports = analyzer.extract_imports()
@@ -130,7 +130,7 @@ from os.path import join, exists
 from . import utils
 from ..core import base
 """
-        analyzer.parse_source(source_code)
+        analyzer.parse_source(source_code, "<test>")
 
         # Act
         imports = analyzer.extract_imports()
@@ -170,7 +170,7 @@ class _PrivateClass:
     """A private class"""
     pass
 '''
-        analyzer.parse_source(source_code)
+        analyzer.parse_source(source_code, "<test>")
 
         # Act
         symbols = analyzer.extract_exported_symbols()
@@ -201,7 +201,7 @@ async def async_function():
     """An async function"""
     pass
 '''
-        analyzer.parse_source(source_code)
+        analyzer.parse_source(source_code, "<test>")
 
         # Act
         symbols = analyzer.extract_exported_symbols()
@@ -227,7 +227,7 @@ _private_var = "secret"
 def function():
     local_var = 10  # This should not be extracted
 '''
-        analyzer.parse_source(source_code)
+        analyzer.parse_source(source_code, "<test>")
 
         # Act
         symbols = analyzer.extract_exported_symbols()
@@ -260,7 +260,7 @@ class ExportedClass:
 class NotExported:
     pass
 '''
-        analyzer.parse_source(source_code)
+        analyzer.parse_source(source_code, "<test>")
 
         # Act
         symbols = analyzer.extract_exported_symbols()
@@ -280,7 +280,7 @@ class NotExported:
 import os
 from typing import List
 '''
-        analyzer.parse_source(source_code)
+        analyzer.parse_source(source_code, "<test>")
         available_modules = {'os', 'typing'}
 
         # Act
@@ -296,7 +296,7 @@ from typing import List
 import nonexistent_module
 from fake_package import something
 '''
-        analyzer.parse_source(source_code)
+        analyzer.parse_source(source_code, "<test>")
         available_modules = {'os', 'sys'}
 
         # Act
@@ -315,7 +315,7 @@ from fake_package import something
 from os.path import join
 from fake.sub.module import something
 '''
-        analyzer.parse_source(source_code)
+        analyzer.parse_source(source_code, "<test>")
         available_modules = {'os', 'os.path', 'fake'}  # fake.sub is not available
 
         # Act
@@ -331,7 +331,7 @@ from fake.sub.module import something
         source_code = '''
 from totally.fake.module import something
 '''
-        analyzer.parse_source(source_code)
+        analyzer.parse_source(source_code, "<test>")
         available_modules = {'os', 'sys'}  # no 'totally' module
 
         # Act
@@ -376,7 +376,7 @@ x = 1  # module level
 def func():
     y = 2  # not module level
 '''
-        analyzer.parse_source(source_code)
+        analyzer.parse_source(source_code, "<test>")
         
         # Get the assignment nodes
         module_assign = analyzer._tree.body[0]

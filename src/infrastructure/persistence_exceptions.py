@@ -5,7 +5,7 @@ from typing import Any, Dict, Optional, Tuple
 class PersistenceError(Exception):
     """Base exception for persistence operations."""
 
-    def __init__(self, message: str, operation: Optional[str] = None, details: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self, message: str, operation: Optional[str], details: Optional[Dict[str, Any]]) -> None:
         """Initialize persistence error.
 
         Args:
@@ -23,7 +23,7 @@ class PersistenceError(Exception):
 class ConnectionError(PersistenceError):
     """Exception raised when database connection fails."""
 
-    def __init__(self, message: str = "Database connection failed", **kwargs: Any) -> None:
+    def __init__(self, message: str, **kwargs: Any) -> None:
         super().__init__(message, operation="connection", **kwargs)
 
 

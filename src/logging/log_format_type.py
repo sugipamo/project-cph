@@ -1,7 +1,8 @@
-from enum import Enum, auto
+from enum import Enum
 
 
 class LogFormatType(Enum):
-    RAW = auto()
-    PLAIN = auto()
-    CUSTOM = auto()
+    PLAIN = "PLAIN"
+    COLORED = "COLORED"
+    JSON = "JSON"
+    STRUCTURED = "STRUCTURED"

@@ -376,7 +376,7 @@ def create_step(json_step: Dict[str, Any], context) -> 'Step':
         raise ValueError("ステップのデフォルト値が設定ファイルから取得できません。config/system/step_defaults.jsonを確認してください")
 
     # 各属性を設定（フォールバック処理を削除）
-    def get_value(key: str, required: bool = False):
+    def get_value(key: str, required: bool):
         if key in json_step:
             return json_step[key]
         if key in step_defaults:
@@ -388,16 +388,16 @@ def create_step(json_step: Dict[str, Any], context) -> 'Step':
     return Step(
         type=StepType(json_step['type']),
         cmd=expanded_cmd,
-        name=get_value('name'),
-        allow_failure=get_value('allow_failure'),
-        show_output=get_value('show_output'),
-        max_workers=get_value('max_workers'),
-        cwd=get_value('cwd'),
-        when=get_value('when'),
-        output_format=get_value('output_format'),
-        format_preset=get_value('format_preset'),
-        force_env_type=get_value('force_env_type'),
-        format_options=get_value('format_options'),
+        name=get_value('name', False),
+        allow_failure=get_value('allow_failure', False),
+        show_output=get_value('show_output', False),
+        max_workers=get_value('max_workers', False),
+        cwd=get_value('cwd', False),
+        when=get_value('when', False),
+        output_format=get_value('output_format', False),
+        format_preset=get_value('format_preset', False),
+        force_env_type=get_value('force_env_type', False),
+        format_options=get_value('format_options', False),
         auto_generated=json_step.get('auto_generated', False)  # auto_generatedは特殊処理
     )
 

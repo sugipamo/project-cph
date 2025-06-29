@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import List
 import sys
 sys.path.append(str(Path(__file__).parent.parent))
-from models.check_result import CheckResult, FailureLocation
+from models.check_result import CheckResult, FailureLocation, LogLevel
 
 class FallbackChecker(ast.NodeVisitor):
     """
@@ -72,7 +72,13 @@ def main() -> CheckResult:
                 all_violations.extend(violations)
     fix_policy = '【CLAUDE.mdルール適用】\nフォールバック処理は禁止されています。\ntry-except文での無条件キャッチは避けてください。\nInfrastructure層でErrorConverterを使用してResult型に変換してください。\nビジネスロジック層ではis_failure()でエラーを明示的にチェックしてください。\n例: error_converter.execute_with_conversion(operation) → result.is_failure()で判定'
     fix_example = '# Before - フォールバック処理\ndef load_config():\n    try:\n        with open(\'config.json\', \'r\') as f:\n            return json.load(f)\n    except Exception:\n        # フォールバック\n        return {"default": "config"}\n\n# After - Result型を使用した明示的なエラーハンドリング\n# Infrastructure層\ndef load_config_with_result(file_handler, error_converter):\n    def _load():\n        return file_handler.read_json(\'config.json\')\n    \n    return error_converter.execute_with_conversion(_load)\n\n# ビジネスロジック層\ndef process_with_config(config_loader):\n    result = config_loader.load_config_with_result()\n    \n    if result.is_failure():\n        # エラーを明示的に処理\n        print.error(f"設定ファイルの読み込みに失敗: {result.error}")\n        return Result.failure("設定ファイルエラー")\n    \n    config = result.value\n    # 通常の処理を続行'
-    return CheckResult(failure_locations=all_violations, fix_policy=fix_policy, fix_example_code=fix_example)
+    return CheckResult(
+        title='fallback_check',
+        log_level=LogLevel.ERROR if all_violations else LogLevel.INFO,
+        failure_locations=all_violations,
+        fix_policy=fix_policy,
+        fix_example_code=fix_example
+    )
 if __name__ == '__main__':
     result = main()
     print(f'フォールバック処理チェッカー: {len(result.failure_locations)}件の違反を検出')

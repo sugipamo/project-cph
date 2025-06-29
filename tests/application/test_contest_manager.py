@@ -26,6 +26,12 @@ class TestContestManager:
                 return self.mock_os_provider
             elif key == DIKey.JSON_PROVIDER:
                 return self.mock_json_provider
+            elif key == DIKey.OPERATION_REPOSITORY:
+                return Mock()  # Return mock for operation repository
+            elif key == DIKey.SYSTEM_CONFIG_REPOSITORY:
+                return Mock()  # Return mock for system config repository
+            elif key == 'contest_current_files_repository':
+                return Mock()  # Return mock for files repository
             else:
                 raise ValueError(f"Key {key} not registered")
         
@@ -414,3 +420,532 @@ class TestContestManager:
                     self.contest_manager.initialize_contest_current('python', 'ABC123', 'A')
                 
                 assert 'both stock and template initialization failed' in str(exc_info.value)
+    
+    def test_os_provider_lazy_load(self):
+        """Test lazy loading of OS provider"""
+        provider = self.contest_manager.os_provider
+        
+        assert provider == self.mock_os_provider
+        self.mock_container.resolve.assert_called_with(DIKey.OS_PROVIDER)
+        
+        # Second access should use cached value
+        provider2 = self.contest_manager.os_provider
+        assert provider2 == self.mock_os_provider
+    
+    def test_json_provider_lazy_load(self):
+        """Test lazy loading of JSON provider"""
+        provider = self.contest_manager.json_provider
+        
+        assert provider == self.mock_json_provider
+        self.mock_container.resolve.assert_called_with(DIKey.JSON_PROVIDER)
+    
+    def test_files_repo_lazy_load(self):
+        """Test lazy loading of files repository"""
+        mock_files_repo = Mock()
+        self.mock_container.resolve = Mock(return_value=mock_files_repo)
+        
+        repo = self.contest_manager.files_repo
+        
+        assert repo == mock_files_repo
+        self.mock_container.resolve.assert_called_with('contest_current_files_repository')
+    
+    def test_env_json_load_failure(self):
+        """Test env_json load failure handling"""
+        from src.application.execution_requests import FileRequest
+        
+        manager = ContestManager(self.mock_container, None)
+        
+        mock_result = Mock()
+        mock_result.success = False
+        mock_result.error_message = "File not found"
+        
+        with patch.object(FileRequest, 'execute_operation') as mock_execute:
+            mock_execute.return_value = mock_result
+            
+            with pytest.raises(RuntimeError) as exc_info:
+                _ = manager.env_json
+            
+            assert "Failed to load shared env.json" in str(exc_info.value)
+            assert "File not found" in str(exc_info.value)
+    
+    def test_env_json_load_failure_no_error_message(self):
+        """Test env_json load failure without error message"""
+        from src.application.execution_requests import FileRequest
+        
+        manager = ContestManager(self.mock_container, None)
+        
+        mock_result = Mock()
+        mock_result.success = False
+        mock_result.error_message = None
+        
+        with patch.object(FileRequest, 'execute_operation') as mock_execute:
+            mock_execute.return_value = mock_result
+            
+            with pytest.raises(RuntimeError) as exc_info:
+                _ = manager.env_json
+            
+            assert "No error message provided by file operation" in str(exc_info.value)
+    
+    def test_get_latest_non_null_value_from_operations(self):
+        """Test _get_latest_non_null_value retrieves from operations"""
+        mock_ops_repo = Mock()
+        mock_operation = Mock()
+        mock_operation.language = 'python'
+        mock_ops_repo.find_all.return_value = [mock_operation]
+        
+        self.mock_container.resolve = Mock(return_value=mock_ops_repo)
+        
+        result = self.contest_manager._get_latest_non_null_value('language')
+        
+        assert result == 'python'
+    
+    def test_get_latest_non_null_value_from_user_configs(self):
+        """Test _get_latest_non_null_value falls back to user configs"""
+        mock_ops_repo = Mock()
+        mock_ops_repo.find_all.return_value = []
+        
+        # Need to mock the config_loader and config_repo
+        mock_config_repo = Mock()
+        mock_config_repo.get_user_specified_configs.return_value = {'language': 'cpp'}
+        
+        # Mock the config_loader property access
+        with patch.object(self.contest_manager, 'config_loader') as mock_config_loader:
+            mock_config_loader.config_repo = mock_config_repo
+            
+            def resolve_mock(key):
+                if key == DIKey.OPERATION_REPOSITORY:
+                    return mock_ops_repo
+                return None
+            
+            self.mock_container.resolve = Mock(side_effect=resolve_mock)
+            
+            result = self.contest_manager._get_latest_non_null_value('language')
+            
+            assert result == 'cpp'
+    
+    def test_get_latest_non_null_value_none_found(self):
+        """Test _get_latest_non_null_value returns None when no value found"""
+        mock_ops_repo = Mock()
+        mock_ops_repo.find_all.return_value = []
+        
+        mock_config_repo = Mock()
+        mock_config_repo.get_user_specified_configs.return_value = {}
+        
+        # Mock the config_loader property access
+        with patch.object(self.contest_manager, 'config_loader') as mock_config_loader:
+            mock_config_loader.config_repo = mock_config_repo
+            
+            self.mock_container.resolve = Mock(return_value=mock_ops_repo)
+            
+            result = self.contest_manager._get_latest_non_null_value('language')
+            
+            assert result is None
+    
+    def test_backup_contest_current_exception_handling(self):
+        """Test backup_contest_current handles exceptions"""
+        self.contest_manager._env_json = {
+            'shared': {
+                'paths': {
+                    'contest_current_path': '/contest/current',
+                    'contest_stock_path': '/contest/stock/{language_name}/{contest_name}/{problem_name}'
+                }
+            }
+        }
+        
+        current_state = {
+            'language_name': 'python',
+            'contest_name': 'ABC123',
+            'problem_name': 'A'
+        }
+        
+        with patch.object(self.contest_manager, '_directory_has_content') as mock_has_content:
+            mock_has_content.side_effect = Exception("Test exception")
+            
+            with pytest.raises(RuntimeError) as exc_info:
+                self.contest_manager.backup_contest_current(current_state)
+            
+            assert "Backup operation failed" in str(exc_info.value)
+            self.mock_logger.error.assert_called()
+    
+    @patch('src.application.contest_manager.SystemTimeProvider')
+    def test_directory_has_content_exception(self, mock_time_provider):
+        """Test _directory_has_content exception handling"""
+        from src.application.execution_requests import FileRequest
+        
+        with patch.object(FileRequest, 'execute_operation') as mock_execute:
+            mock_execute.side_effect = Exception("File operation error")
+            
+            with pytest.raises(RuntimeError) as exc_info:
+                self.contest_manager._directory_has_content('/test/path')
+            
+            assert "Failed to check directory content" in str(exc_info.value)
+    
+    @patch('src.application.contest_manager.SystemTimeProvider')
+    def test_ensure_directory_exists_exception(self, mock_time_provider):
+        """Test _ensure_directory_exists exception handling"""
+        from src.application.execution_requests import FileRequest
+        
+        with patch.object(FileRequest, 'execute_operation') as mock_execute:
+            mock_execute.side_effect = Exception("Directory creation error")
+            
+            with pytest.raises(RuntimeError) as exc_info:
+                self.contest_manager._ensure_directory_exists('/test/path')
+            
+            assert "Failed to ensure directory exists" in str(exc_info.value)
+    
+    @patch('src.application.contest_manager.SystemTimeProvider')
+    def test_move_directory_contents_success(self, mock_time_provider):
+        """Test successful _move_directory_contents"""
+        from src.application.execution_requests import FileRequest
+        
+        self.mock_os_provider.listdir.return_value = ['file1.py', 'file2.py']
+        self.mock_os_provider.path_join.side_effect = lambda a, b: f"{a}/{b}"
+        
+        mock_result = Mock()
+        mock_result.success = True
+        
+        with patch.object(FileRequest, 'execute_operation') as mock_execute:
+            mock_execute.return_value = mock_result
+            
+            result = self.contest_manager._move_directory_contents('/source', '/dest')
+            
+            assert result is True
+            assert mock_execute.call_count == 2  # Two files
+    
+    @patch('src.application.contest_manager.SystemTimeProvider')
+    def test_move_directory_contents_failure(self, mock_time_provider):
+        """Test _move_directory_contents handles move failure"""
+        from src.application.execution_requests import FileRequest
+        
+        self.mock_os_provider.listdir.return_value = ['file1.py']
+        self.mock_os_provider.path_join.side_effect = lambda a, b: f"{a}/{b}"
+        
+        mock_result = Mock()
+        mock_result.success = False
+        
+        with patch.object(FileRequest, 'execute_operation') as mock_execute:
+            mock_execute.return_value = mock_result
+            
+            result = self.contest_manager._move_directory_contents('/source', '/dest')
+            
+            assert result is False
+    
+    def test_move_directory_contents_exception(self):
+        """Test _move_directory_contents exception handling"""
+        self.mock_os_provider.listdir.side_effect = Exception("List directory error")
+        
+        with pytest.raises(RuntimeError) as exc_info:
+            self.contest_manager._move_directory_contents('/source', '/dest')
+        
+        assert "Failed to move directory contents" in str(exc_info.value)
+        self.mock_logger.error.assert_called()
+    
+    @patch('src.application.contest_manager.SystemTimeProvider')
+    def test_clear_contest_current_with_files_and_dirs(self, mock_time_provider):
+        """Test _clear_contest_current removes files and directories"""
+        from src.application.execution_requests import FileRequest
+        
+        self.mock_os_provider.exists.return_value = True
+        self.mock_os_provider.listdir.return_value = ['file.py', 'subdir']
+        self.mock_os_provider.path_join.side_effect = lambda a, b: f"{a}/{b}"
+        self.mock_os_provider.isdir.side_effect = lambda path: 'subdir' in path
+        
+        mock_result = Mock()
+        mock_result.success = True
+        
+        with patch.object(FileRequest, 'execute_operation') as mock_execute:
+            mock_execute.return_value = mock_result
+            
+            result = self.contest_manager._clear_contest_current('/contest/current')
+            
+            assert result is True
+            assert mock_execute.call_count == 2  # One file, one directory
+    
+    def test_clear_contest_current_exception(self):
+        """Test _clear_contest_current exception handling"""
+        self.mock_os_provider.exists.side_effect = Exception("OS error")
+        
+        with pytest.raises(RuntimeError) as exc_info:
+            self.contest_manager._clear_contest_current('/contest/current')
+        
+        assert "Failed to clear contest_current directory" in str(exc_info.value)
+        self.mock_logger.error.assert_called()
+    
+    @patch('src.application.contest_manager.SystemTimeProvider')
+    def test_copy_directory_contents_with_subdirs(self, mock_time_provider):
+        """Test _copy_directory_contents handles subdirectories"""
+        from src.application.execution_requests import FileRequest
+        
+        self.mock_os_provider.listdir.return_value = ['file.py', 'subdir']
+        self.mock_os_provider.path_join.side_effect = lambda a, b: f"{a}/{b}"
+        self.mock_os_provider.isdir.side_effect = lambda path: 'subdir' in path
+        
+        mock_result = Mock()
+        mock_result.success = True
+        
+        with patch.object(self.contest_manager, '_ensure_directory_exists') as mock_ensure:
+            with patch.object(self.contest_manager, '_copy_template_recursive') as mock_recursive:
+                with patch.object(self.contest_manager, 'get_current_contest_state') as mock_state:
+                    with patch.object(FileRequest, 'execute_operation') as mock_execute:
+                        mock_ensure.return_value = True
+                        mock_recursive.return_value = True
+                        mock_execute.return_value = mock_result
+                        mock_state.return_value = {
+                            'language_name': 'python',
+                            'contest_name': 'ABC123',
+                            'problem_name': 'A'
+                        }
+                        
+                        result = self.contest_manager._copy_directory_contents('/source', '/dest')
+                        
+                        assert result is True
+                        mock_recursive.assert_called_once()
+                        mock_execute.assert_called_once()  # Only for file.py
+    
+    def test_copy_directory_contents_exception(self):
+        """Test _copy_directory_contents exception handling"""
+        with patch.object(self.contest_manager, '_ensure_directory_exists') as mock_ensure:
+            mock_ensure.side_effect = Exception("Directory error")
+            
+            with pytest.raises(RuntimeError) as exc_info:
+                self.contest_manager._copy_directory_contents('/source', '/dest')
+            
+            assert "Failed to copy directory contents" in str(exc_info.value)
+            self.mock_logger.error.assert_called()
+    
+    def test_copy_template_structure_success(self):
+        """Test _copy_template_structure with file tracking"""
+        mock_files_repo = Mock()
+        self.mock_container.resolve = Mock(return_value=mock_files_repo)
+        
+        tracked_files = []
+        
+        with patch.object(self.contest_manager, '_ensure_directory_exists') as mock_ensure:
+            with patch.object(self.contest_manager, '_copy_template_recursive') as mock_recursive:
+                mock_ensure.return_value = True
+                
+                def mock_recursive_side_effect(source, dest, rel_path, lang, contest, problem, files_list):
+                    files_list.append(('python', 'ABC123', 'A', 'main.py', 'template', '/template/main.py'))
+                    return True
+                
+                mock_recursive.side_effect = mock_recursive_side_effect
+                
+                result = self.contest_manager._copy_template_structure('/template', '/dest', 'python', 'ABC123', 'A')
+                
+                assert result is True
+                mock_files_repo.track_multiple_files.assert_called_once()
+    
+    def test_copy_template_structure_exception(self):
+        """Test _copy_template_structure exception handling"""
+        with patch.object(self.contest_manager, '_ensure_directory_exists') as mock_ensure:
+            mock_ensure.side_effect = Exception("Template error")
+            
+            with pytest.raises(RuntimeError) as exc_info:
+                self.contest_manager._copy_template_structure('/template', '/dest', 'python', 'ABC123', 'A')
+            
+            assert "Failed to copy template structure" in str(exc_info.value)
+            self.mock_logger.error.assert_called()
+    
+    @patch('src.application.contest_manager.SystemTimeProvider')
+    def test_copy_template_recursive_files_and_dirs(self, mock_time_provider):
+        """Test _copy_template_recursive handles files and directories"""
+        from src.application.execution_requests import FileRequest
+        
+        self.mock_os_provider.listdir.return_value = ['file.py', 'subdir']
+        self.mock_os_provider.path_join.side_effect = lambda a, b: f"{a}/{b}"
+        self.mock_os_provider.isdir.side_effect = lambda path: 'subdir' in path
+        
+        mock_result = Mock()
+        mock_result.success = True
+        
+        tracked_files = []
+        
+        with patch.object(self.contest_manager, '_ensure_directory_exists') as mock_ensure:
+            with patch.object(FileRequest, 'execute_operation') as mock_execute:
+                mock_ensure.return_value = True
+                mock_execute.return_value = mock_result
+                
+                # Mock recursive call for subdirectory
+                original_method = self.contest_manager._copy_template_recursive
+                call_count = 0
+                
+                def mock_recursive(source, dest, rel_path, lang, contest, problem, files):
+                    nonlocal call_count
+                    call_count += 1
+                    if call_count == 1:
+                        # First call (main)
+                        return original_method(source, dest, rel_path, lang, contest, problem, files)
+                    else:
+                        # Recursive call for subdir
+                        return True
+                
+                with patch.object(self.contest_manager, '_copy_template_recursive', mock_recursive):
+                    result = self.contest_manager._copy_template_recursive('/source', '/dest', '', 'python', 'ABC123', 'A', tracked_files)
+                
+                assert result is True
+                assert len(tracked_files) == 1  # Only file.py tracked
+                assert tracked_files[0][3] == 'file.py'
+    
+    def test_copy_template_recursive_exception(self):
+        """Test _copy_template_recursive exception handling"""
+        self.mock_os_provider.listdir.side_effect = Exception("Recursive error")
+        
+        tracked_files = []
+        
+        with pytest.raises(RuntimeError) as exc_info:
+            self.contest_manager._copy_template_recursive('/source', '/dest', '', 'python', 'ABC123', 'A', tracked_files)
+        
+        assert "Failed to copy template files recursively" in str(exc_info.value)
+    
+    def test_track_files_from_stock_success(self):
+        """Test _track_files_from_stock with repository operations"""
+        mock_files_repo = Mock()
+        self.mock_container.resolve = Mock(return_value=mock_files_repo)
+        
+        with patch.object(self.contest_manager, '_track_files_recursive') as mock_track:
+            def mock_track_side_effect(source, dest, rel_path, lang, contest, problem, files_list):
+                files_list.append(('python', 'ABC123', 'A', 'main.py', 'stock', '/stock/main.py'))
+            
+            mock_track.side_effect = mock_track_side_effect
+            
+            result = self.contest_manager._track_files_from_stock('/stock', '/current', 'python', 'ABC123', 'A')
+            
+            assert result is True
+            mock_files_repo.clear_contest_tracking.assert_called_once_with('python', 'ABC123', 'A')
+            mock_files_repo.track_multiple_files.assert_called_once()
+    
+    def test_track_files_from_stock_exception(self):
+        """Test _track_files_from_stock exception handling"""
+        with patch.object(self.contest_manager, '_track_files_recursive') as mock_track:
+            mock_track.side_effect = Exception("Tracking error")
+            
+            with pytest.raises(RuntimeError) as exc_info:
+                self.contest_manager._track_files_from_stock('/stock', '/current', 'python', 'ABC123', 'A')
+            
+            assert "Failed to track files from stock" in str(exc_info.value)
+    
+    def test_track_files_recursive_success(self):
+        """Test _track_files_recursive processes files correctly"""
+        self.mock_os_provider.listdir.return_value = ['file1.py', 'subdir', 'file2.py']
+        self.mock_os_provider.path_join.side_effect = lambda a, b: f"{a}/{b}"
+        self.mock_os_provider.isdir.side_effect = lambda path: 'subdir' in path
+        
+        tracked_files = []
+        
+        # Mock recursive call for subdirectory
+        original_method = self.contest_manager._track_files_recursive
+        call_count = 0
+        
+        def mock_recursive(source, dest, rel_path, lang, contest, problem, files):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                # First call (main)
+                original_method(source, dest, rel_path, lang, contest, problem, files)
+            # Skip recursive call for subdir
+        
+        with patch.object(self.contest_manager, '_track_files_recursive', mock_recursive):
+            self.contest_manager._track_files_recursive('/source', '/dest', '', 'python', 'ABC123', 'A', tracked_files)
+        
+        assert len(tracked_files) == 2  # file1.py and file2.py
+        assert all(f[4] == 'stock' for f in tracked_files)
+    
+    def test_track_files_recursive_exception(self):
+        """Test _track_files_recursive exception handling"""
+        self.mock_os_provider.listdir.side_effect = Exception("List error")
+        
+        tracked_files = []
+        
+        with pytest.raises(RuntimeError) as exc_info:
+            self.contest_manager._track_files_recursive('/source', '/dest', '', 'python', 'ABC123', 'A', tracked_files)
+        
+        assert "Failed to track files recursively" in str(exc_info.value)
+    
+    def test_handle_contest_change_exception(self):
+        """Test handle_contest_change exception handling"""
+        with patch.object(self.contest_manager, 'needs_backup') as mock_needs:
+            mock_needs.side_effect = Exception("Check error")
+            
+            with pytest.raises(RuntimeError) as exc_info:
+                self.contest_manager.handle_contest_change('python', 'ABC123', 'A')
+            
+            assert "Failed to handle contest change" in str(exc_info.value)
+            self.mock_logger.error.assert_called()
+    
+    def test_restore_from_contest_stock_exception(self):
+        """Test restore_from_contest_stock exception handling"""
+        self.contest_manager._env_json = {'shared': {'paths': {}}}
+        
+        with pytest.raises(RuntimeError) as exc_info:
+            self.contest_manager.restore_from_contest_stock('python', 'ABC123', 'A')
+        
+        assert "Failed to restore from contest_stock" in str(exc_info.value)
+        self.mock_logger.error.assert_called()
+    
+    def test_initialize_from_template_exception(self):
+        """Test initialize_from_template exception handling"""
+        self.contest_manager._env_json = {'shared': {'paths': {}}}
+        
+        with pytest.raises(RuntimeError) as exc_info:
+            self.contest_manager.initialize_from_template('python', 'ABC123', 'A')
+        
+        assert "Failed to initialize from template" in str(exc_info.value)
+        self.mock_logger.error.assert_called()
+    
+    @patch('src.application.contest_manager.SystemTimeProvider')
+    def test_restore_from_contest_stock_full_flow(self, mock_time_provider):
+        """Test complete restore flow from contest stock"""
+        self.contest_manager._env_json = {
+            'shared': {
+                'paths': {
+                    'contest_current_path': '/contest/current',
+                    'contest_stock_path': '/contest/stock/{language_name}/{contest_name}/{problem_name}'
+                }
+            }
+        }
+        
+        mock_files_repo = Mock()
+        self.mock_container.resolve = Mock(return_value=mock_files_repo)
+        
+        with patch.object(self.contest_manager, '_directory_has_content') as mock_has_content:
+            with patch.object(self.contest_manager, '_clear_contest_current') as mock_clear:
+                with patch.object(self.contest_manager, '_copy_directory_contents') as mock_copy:
+                    with patch.object(self.contest_manager, '_track_files_from_stock') as mock_track:
+                        mock_has_content.return_value = True
+                        mock_clear.return_value = True
+                        mock_copy.return_value = True
+                        
+                        result = self.contest_manager.restore_from_contest_stock('python', 'ABC123', 'A')
+                        
+                        assert result is True
+                        mock_clear.assert_called_once_with('/contest/current')
+                        mock_copy.assert_called_once_with('/contest/stock/python/ABC123/A', '/contest/current')
+                        mock_track.assert_called_once()
+    
+    @patch('src.application.contest_manager.SystemTimeProvider')
+    def test_initialize_from_template_full_flow(self, mock_time_provider):
+        """Test complete initialization flow from template"""
+        self.contest_manager._env_json = {
+            'shared': {
+                'paths': {
+                    'contest_current_path': '/contest/current',
+                    'contest_template_path': '/contest/template'
+                }
+            }
+        }
+        
+        self.mock_os_provider.path_join.return_value = '/contest/template/python'
+        
+        with patch.object(self.contest_manager, '_directory_has_content') as mock_has_content:
+            with patch.object(self.contest_manager, '_clear_contest_current') as mock_clear:
+                with patch.object(self.contest_manager, '_copy_template_structure') as mock_copy:
+                    mock_has_content.return_value = True
+                    mock_clear.return_value = True
+                    mock_copy.return_value = True
+                    
+                    result = self.contest_manager.initialize_from_template('python', 'ABC123', 'A')
+                    
+                    assert result is True
+                    mock_clear.assert_called_once_with('/contest/current')
+                    mock_copy.assert_called_once_with('/contest/template/python', '/contest/current', 'python', 'ABC123', 'A')
+                    self.mock_logger.info.assert_called()

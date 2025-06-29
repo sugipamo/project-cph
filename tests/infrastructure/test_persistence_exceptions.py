@@ -26,23 +26,23 @@ class TestPersistenceError:
 
     def test_init_minimal(self):
         """Test initialization with minimal parameters"""
-        error = PersistenceError("Simple error", details={})
+        error = PersistenceError("Simple error", operation=None, details={})
         
         assert str(error) == "Simple error"
         assert error.operation is None
         assert error.details == {}
 
     def test_init_without_details_raises_error(self):
-        """Test that initialization without details raises ValueError"""
-        with pytest.raises(ValueError) as exc_info:
+        """Test that initialization without details raises TypeError"""
+        with pytest.raises(TypeError) as exc_info:
             PersistenceError("Error message", operation="op")
         
-        assert "Details must be explicitly provided" in str(exc_info.value)
+        assert "missing 1 required positional argument: 'details'" in str(exc_info.value)
 
     def test_init_with_none_details_raises_error(self):
         """Test that passing None for details raises ValueError"""
         with pytest.raises(ValueError) as exc_info:
-            PersistenceError("Error message", details=None)
+            PersistenceError("Error message", operation=None, details=None)
         
         assert "Details must be explicitly provided" in str(exc_info.value)
 
@@ -52,7 +52,7 @@ class TestConnectionError:
 
     def test_default_message(self):
         """Test default message and operation"""
-        error = ConnectionError(details={})
+        error = ConnectionError("Database connection failed", details={})
         
         assert str(error) == "Database connection failed"
         assert error.operation == "connection"
@@ -222,10 +222,10 @@ class TestExceptionHierarchy:
     def test_all_exceptions_inherit_from_persistence_error(self):
         """Test that all specific exceptions inherit from PersistenceError"""
         exceptions = [
-            ConnectionError(details={}),
+            ConnectionError("test", details={}),
             MigrationError("test", details={}),
             QueryError("test", details={}),
-            TransactionError(details={}),
+            TransactionError("test", details={}),
             RepositoryError("test", details={}),
             IntegrityError("test", details={}),
             SchemaError("test", details={})
@@ -239,7 +239,7 @@ class TestExceptionHierarchy:
         """Test catching exceptions at different levels"""
         # Can catch as specific exception
         with pytest.raises(ConnectionError):
-            raise ConnectionError(details={})
+            raise ConnectionError("Connection failed", details={})
         
         # Can catch as PersistenceError
         with pytest.raises(PersistenceError):

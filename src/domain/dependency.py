@@ -8,7 +8,7 @@ from src.domain.step import Step, StepContext, StepType
 from src.domain.step_runner import expand_template
 
 
-def create_mkdir_step(path: str, cwd: Optional[str] = None) -> Step:
+def create_mkdir_step(path: str, cwd: Optional[str]) -> Step:
     """MKDIRステップを作成するファクトリー関数
     
     Args:
@@ -90,12 +90,12 @@ def generate_preparation_steps(step: Step, existing_dirs: set[str], existing_fil
             dst_path = step.cmd[1]
             dst_dir = str(Path(dst_path).parent)
             if dst_dir != '.' and dst_dir not in existing_dirs:
-                prep_steps.append(create_mkdir_step(dst_dir))
+                prep_steps.append(create_mkdir_step(dst_dir, cwd=step.cwd))
     elif step.type == StepType.TOUCH and len(step.cmd) >= 1:
         file_path = step.cmd[0]
         parent_dir = str(Path(file_path).parent)
         if parent_dir != '.' and parent_dir not in existing_dirs:
-            prep_steps.append(create_mkdir_step(parent_dir))
+            prep_steps.append(create_mkdir_step(parent_dir, cwd=step.cwd))
     if step.cwd and step.cwd not in existing_dirs:
         prep_steps.append(create_mkdir_step(step.cwd, cwd=step.cwd))
     return prep_steps

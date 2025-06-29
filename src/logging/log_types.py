@@ -1,20 +1,24 @@
-"""Log-related type definitions without circular dependencies."""
-from dataclasses import dataclass, field
+from enum import IntEnum
+from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum, auto
+from typing import Any, Optional
 
 
-class LogLevel(Enum):
-    DEBUG = auto()
-    INFO = auto()
-    WARNING = auto()
-    ERROR = auto()
-    CRITICAL = auto()
+class LogLevel(IntEnum):
+    DEBUG = 10
+    INFO = 20
+    WARNING = 30
+    ERROR = 40
+    CRITICAL = 50
 
 
 @dataclass(frozen=True)
 class BaseLogEntry:
-    """Base log entry without output manager dependency."""
     content: str
     level: LogLevel = LogLevel.INFO
-    timestamp: datetime = field(default_factory=datetime.now)
+    timestamp: datetime = None
+    data: Optional[Any] = None
+    
+    def __post_init__(self):
+        if self.timestamp is None:
+            object.__setattr__(self, 'timestamp', datetime.now())

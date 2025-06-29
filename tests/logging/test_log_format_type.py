@@ -10,9 +10,10 @@ class TestLogFormatType:
 
     def test_enum_values(self):
         """Test that all expected enum values exist."""
-        assert hasattr(LogFormatType, 'RAW')
         assert hasattr(LogFormatType, 'PLAIN')
-        assert hasattr(LogFormatType, 'CUSTOM')
+        assert hasattr(LogFormatType, 'COLORED')
+        assert hasattr(LogFormatType, 'JSON')
+        assert hasattr(LogFormatType, 'STRUCTURED')
 
     def test_enum_inheritance(self):
         """Test that LogFormatType is an Enum."""
@@ -30,26 +31,30 @@ class TestLogFormatType:
 
     def test_enum_string_representation(self):
         """Test string representation of enum members."""
-        assert str(LogFormatType.RAW) == "LogFormatType.RAW"
         assert str(LogFormatType.PLAIN) == "LogFormatType.PLAIN"
-        assert str(LogFormatType.CUSTOM) == "LogFormatType.CUSTOM"
+        assert str(LogFormatType.COLORED) == "LogFormatType.COLORED"
+        assert str(LogFormatType.JSON) == "LogFormatType.JSON"
+        assert str(LogFormatType.STRUCTURED) == "LogFormatType.STRUCTURED"
 
     def test_enum_name_attribute(self):
         """Test name attribute of enum members."""
-        assert LogFormatType.RAW.name == "RAW"
         assert LogFormatType.PLAIN.name == "PLAIN"
-        assert LogFormatType.CUSTOM.name == "CUSTOM"
+        assert LogFormatType.COLORED.name == "COLORED"
+        assert LogFormatType.JSON.name == "JSON"
+        assert LogFormatType.STRUCTURED.name == "STRUCTURED"
 
     def test_enum_comparison(self):
         """Test enum member comparison."""
-        assert LogFormatType.RAW == LogFormatType.RAW
-        assert LogFormatType.RAW != LogFormatType.PLAIN
-        assert LogFormatType.RAW != LogFormatType.CUSTOM
+        assert LogFormatType.PLAIN == LogFormatType.PLAIN
+        assert LogFormatType.PLAIN != LogFormatType.COLORED
+        assert LogFormatType.COLORED != LogFormatType.JSON
+        assert LogFormatType.JSON != LogFormatType.STRUCTURED
 
     def test_enum_iteration(self):
         """Test iterating over enum members."""
         members = list(LogFormatType)
-        assert len(members) == 3
-        assert LogFormatType.RAW in members
+        assert len(members) == 4
         assert LogFormatType.PLAIN in members
-        assert LogFormatType.CUSTOM in members
+        assert LogFormatType.COLORED in members
+        assert LogFormatType.JSON in members
+        assert LogFormatType.STRUCTURED in members

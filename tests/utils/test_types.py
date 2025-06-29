@@ -99,7 +99,7 @@ class TestLogEntry:
     def test_log_level_backward_compatibility(self):
         """Test that LogLevel is properly re-exported."""
         from src.utils.types import LogLevel as TypesLogLevel
-        from src.utils.log_types import LogLevel as BaseLogLevel
+        from src.logging.log_types import LogLevel as BaseLogLevel
         
         # They should be the same enum
         assert TypesLogLevel is BaseLogLevel

@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Any, Optional, Union
 
 from src.utils.format_info import FormatInfo
-from src.utils.log_types import LogLevel as BaseLogLevel
+from src.logging.log_types import LogLevel as BaseLogLevel
 
 # Re-export LogLevel for backward compatibility
 LogLevel = BaseLogLevel

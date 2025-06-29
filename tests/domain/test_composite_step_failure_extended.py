@@ -18,7 +18,9 @@ class TestCompositeStepFailureExtended:
             
             error = CompositeStepFailureError(
                 message="Test error",
+                result=None,
                 original_exception=original_exception,
+                error_code=None,
                 context="file_operation"
             )
             
@@ -30,7 +32,10 @@ class TestCompositeStepFailureExtended:
         """Test initialization with explicit error code."""
         error = CompositeStepFailureError(
             message="Test error",
-            error_code=ErrorCode.FILE_PERMISSION_DENIED
+            result=None,
+            original_exception=None,
+            error_code=ErrorCode.FILE_PERMISSION_DENIED,
+            context=""
         )
         
         assert error.error_code == ErrorCode.FILE_PERMISSION_DENIED
@@ -40,7 +45,11 @@ class TestCompositeStepFailureExtended:
     def test_init_default_error_code(self):
         """Test initialization with default error code when no exception."""
         error = CompositeStepFailureError(
-            message="Test error"
+            message="Test error",
+            result=None,
+            original_exception=None,
+            error_code=None,
+            context=""
         )
         
         assert error.error_code == ErrorCode.UNKNOWN_ERROR
@@ -53,7 +62,10 @@ class TestCompositeStepFailureExtended:
             
             error = CompositeStepFailureError(
                 message="Permission denied",
-                error_code=ErrorCode.FILE_PERMISSION_DENIED
+                result=None,
+                original_exception=None,
+                error_code=ErrorCode.FILE_PERMISSION_DENIED,
+                context=""
             )
             
             suggestion = error.get_suggestion()
@@ -70,7 +82,10 @@ class TestCompositeStepFailureExtended:
                 
                 error = CompositeStepFailureError(
                     message="Network error occurred",
-                    error_code=ErrorCode.NETWORK_CONNECTION_FAILED
+                    result=None,
+                    original_exception=None,
+                    error_code=ErrorCode.NETWORK_CONNECTION_FAILED,
+                    context=""
                 )
                 
                 formatted = error.get_formatted_message()
@@ -93,7 +108,10 @@ class TestCompositeStepFailureExtended:
                 
                 error = CompositeStepFailureError(
                     message="Cannot open file",
-                    error_code=ErrorCode.FILE_NOT_FOUND
+                    result=None,
+                    original_exception=None,
+                    error_code=ErrorCode.FILE_NOT_FOUND,
+                    context=""
                 )
                 
                 formatted = error.get_formatted_message()
@@ -108,8 +126,20 @@ class TestCompositeStepFailureExtended:
     
     def test_error_id_uniqueness(self):
         """Test that error_id is unique for each instance."""
-        error1 = CompositeStepFailureError("Error 1")
-        error2 = CompositeStepFailureError("Error 2")
+        error1 = CompositeStepFailureError(
+            message="Error 1",
+            result=None,
+            original_exception=None,
+            error_code=None,
+            context=""
+        )
+        error2 = CompositeStepFailureError(
+            message="Error 2",
+            result=None,
+            original_exception=None,
+            error_code=None,
+            context=""
+        )
         
         assert error1.error_id != error2.error_id
         assert len(error1.error_id) == 8
@@ -123,7 +153,10 @@ class TestCompositeStepFailureExtended:
         
         error = CompositeStepFailureError(
             message="Step failed",
-            result=mock_result
+            result=mock_result,
+            original_exception=None,
+            error_code=None,
+            context=""
         )
         
         assert error.result == mock_result
@@ -132,7 +165,13 @@ class TestCompositeStepFailureExtended:
     
     def test_str_representation(self):
         """Test string representation of error."""
-        error = CompositeStepFailureError("Test error message")
+        error = CompositeStepFailureError(
+            message="Test error message",
+            result=None,
+            original_exception=None,
+            error_code=None,
+            context=""
+        )
         assert str(error) == "Test error message"
     
     def test_formatted_message_strips_trailing_newline(self):
@@ -142,7 +181,13 @@ class TestCompositeStepFailureExtended:
                 mock_suggestion.return_value = "Test suggestion"
                 mock_actions.return_value = ["Action 1"]
                 
-                error = CompositeStepFailureError("Error", error_code=ErrorCode.UNKNOWN_ERROR)
+                error = CompositeStepFailureError(
+                    message="Error",
+                    result=None,
+                    original_exception=None,
+                    error_code=ErrorCode.UNKNOWN_ERROR,
+                    context=""
+                )
                 formatted = error.get_formatted_message()
                 
                 assert not formatted.endswith('\n\n')

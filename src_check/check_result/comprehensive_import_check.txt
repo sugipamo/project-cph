@@ -2,10 +2,10 @@
 
 失敗箇所: 4件
 ----------------------------------------
-1. /home/cphelper/project-cph/src/configuration/di_config.py:37
-2. /home/cphelper/project-cph/src/configuration/di_config.py:38
-3. /home/cphelper/project-cph/src/configuration/di_config.py:39
-4. /home/cphelper/project-cph/src/configuration/di_config.py:40
+1. /home/cphelper/project-cph/src/configuration/di_config.py:38
+2. /home/cphelper/project-cph/src/configuration/di_config.py:39
+3. /home/cphelper/project-cph/src/configuration/di_config.py:40
+4. /home/cphelper/project-cph/src/configuration/di_config.py:41
 
 修正方針:
 --------------------
@@ -17,13 +17,13 @@
 ------------------------------------------------------------
 
 不明なモジュール:
-  /home/cphelper/project-cph/src/configuration/di_config.py:37 - src_check.mocks.drivers.mock_docker_driver
-  /home/cphelper/project-cph/src/configuration/di_config.py:38 - src_check.mocks.drivers.mock_file_driver
-  /home/cphelper/project-cph/src/configuration/di_config.py:39 - src_check.mocks.drivers.mock_python_driver
-  /home/cphelper/project-cph/src/configuration/di_config.py:40 - src_check.mocks.drivers.mock_shell_driver
+  /home/cphelper/project-cph/src/configuration/di_config.py:38 - src_check.mocks.drivers.mock_docker_driver
+  /home/cphelper/project-cph/src/configuration/di_config.py:39 - src_check.mocks.drivers.mock_file_driver
+  /home/cphelper/project-cph/src/configuration/di_config.py:40 - src_check.mocks.drivers.mock_python_driver
+  /home/cphelper/project-cph/src/configuration/di_config.py:41 - src_check.mocks.drivers.mock_shell_driver
 
 対応方法:
   - 削除されたモジュール: コードを更新して別のモジュールを使用するか、機能を再実装してください
   - 不明なモジュール: 外部ライブラリの場合はインストールが必要です
 
-実行時刻: 2025-06-28 10:58:37
+実行時刻: 2025-06-29 02:14:51

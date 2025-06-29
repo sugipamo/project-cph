@@ -8,7 +8,7 @@ from src.operations.error_codes import ErrorCode, ErrorSuggestion, classify_erro
 class CompositeStepFailureError(Exception):
     """Exception raised when a composite step fails."""
 
-    def __init__(self, message: str, result: Optional[Any]=None, original_exception: Optional[Exception]=None, error_code: Optional[ErrorCode]=None, context: str=''):
+    def __init__(self, message: str, result: Optional[Any], original_exception: Optional[Exception], error_code: Optional[ErrorCode], context: str):
         """Initialize composite step failure exception.
 
         Args:

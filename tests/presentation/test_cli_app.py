@@ -318,7 +318,7 @@ class TestMinimalCLIApp:
         result = Mock()
         result.get_error_output.return_value = "Detailed error output"
         
-        exception = CompositeStepFailureError("Test failure", result=result, original_exception=original_exception)
+        exception = CompositeStepFailureError("Test failure", result=result, original_exception=original_exception, error_code=None, context="")
         
         app = MinimalCLIApp(Mock(), logger)
         exit_code = app._handle_composite_step_failure(exception)
@@ -337,7 +337,7 @@ class TestMinimalCLIApp:
         logger.output_manager = Mock()
         logger.output_manager.flush = Mock()
         
-        exception = CompositeStepFailureError("Test failure", None)
+        exception = CompositeStepFailureError("Test failure", result=None, original_exception=None, error_code=None, context="")
         exception.result = None
         
         app = MinimalCLIApp(Mock(), logger)

@@ -20,13 +20,13 @@ class TestFormatInfo:
     def test_init_with_values(self):
         """Test initialization with specific values."""
         info = FormatInfo(
-            formattype=LogFormatType.CUSTOM,
+            formattype=LogFormatType.COLORED,
             color="red",
             bold=True,
             indent=2
         )
         
-        assert info.formattype == LogFormatType.CUSTOM
+        assert info.formattype == LogFormatType.COLORED
         assert info.color == "red"
         assert info.bold is True
         assert info.indent == 2
@@ -40,7 +40,7 @@ class TestFormatInfo:
     def test_to_dict(self):
         """Test conversion to dictionary."""
         info = FormatInfo(
-            formattype=LogFormatType.CUSTOM,
+            formattype=LogFormatType.COLORED,
             color="green",
             bold=True,
             indent=1
@@ -93,7 +93,7 @@ class TestFormatInfo:
     def test_apply_custom_format_with_color(self):
         """Test apply with CUSTOM format and color."""
         info = FormatInfo(
-            formattype=LogFormatType.CUSTOM,
+            formattype=LogFormatType.COLORED,
             color="blue"
         )
         
@@ -107,7 +107,7 @@ class TestFormatInfo:
     def test_apply_custom_format_with_bold(self):
         """Test apply with CUSTOM format and bold."""
         info = FormatInfo(
-            formattype=LogFormatType.CUSTOM,
+            formattype=LogFormatType.COLORED,
             bold=True
         )
         
@@ -119,7 +119,7 @@ class TestFormatInfo:
     def test_apply_custom_format_with_color_and_bold(self):
         """Test apply with CUSTOM format, color, and bold."""
         info = FormatInfo(
-            formattype=LogFormatType.CUSTOM,
+            formattype=LogFormatType.COLORED,
             color="red",
             bold=True
         )
@@ -145,7 +145,7 @@ class TestFormatInfo:
     def test_apply_with_indent_and_formatting(self):
         """Test apply with indent and other formatting."""
         info = FormatInfo(
-            formattype=LogFormatType.CUSTOM,
+            formattype=LogFormatType.COLORED,
             color="green",
             bold=True,
             indent=1

@@ -36,11 +36,11 @@ class TestLogLevel:
     
     def test_log_level_string_representation(self):
         """Test string representation of enum values"""
-        assert str(LogLevel.DEBUG) == "LogLevel.DEBUG"
-        assert str(LogLevel.INFO) == "LogLevel.INFO"
-        assert str(LogLevel.WARNING) == "LogLevel.WARNING"
-        assert str(LogLevel.ERROR) == "LogLevel.ERROR"
-        assert str(LogLevel.CRITICAL) == "LogLevel.CRITICAL"
+        assert str(LogLevel.DEBUG) == "10"
+        assert str(LogLevel.INFO) == "20"
+        assert str(LogLevel.WARNING) == "30"
+        assert str(LogLevel.ERROR) == "40"
+        assert str(LogLevel.CRITICAL) == "50"
 
 
 class TestBaseLogEntry:

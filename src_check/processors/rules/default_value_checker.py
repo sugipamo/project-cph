@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import List
 import sys
 sys.path.append(str(Path(__file__).parent.parent))
-from models.check_result import CheckResult, FailureLocation
+from models.check_result import CheckResult, FailureLocation, LogLevel
 
 class DefaultValueChecker(ast.NodeVisitor):
     """関数の引数にデフォルト値が設定されているかをチェックする"""
@@ -46,7 +46,13 @@ def main() -> CheckResult:
             all_violations.extend(violations)
     fix_policy = '引数のデフォルト値を削除し、呼び出し元で明示的に値を渡すようにしてください。'
     fix_example = '# Before\ndef process_data(data, timeout=30):\n    # 処理\n\n# After\ndef process_data(data, timeout):\n    # 処理\n\n# 呼び出し元\nprocess_data(data, timeout=30)'
-    return CheckResult(failure_locations=all_violations, fix_policy=fix_policy, fix_example_code=fix_example)
+    return CheckResult(
+        title='default_value_check',
+        log_level=LogLevel.ERROR if all_violations else LogLevel.INFO,
+        failure_locations=all_violations,
+        fix_policy=fix_policy,
+        fix_example_code=fix_example
+    )
 if __name__ == '__main__':
     result = main()
     print(f'Found {len(result.failure_locations)} violations')

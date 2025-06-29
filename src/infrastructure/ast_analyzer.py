@@ -29,7 +29,7 @@ class ASTAnalyzer:
         except (SyntaxError, UnicodeDecodeError):
             return None
 
-    def parse_source(self, source_code: str, filename: str = '<string>') -> Optional[ast.AST]:
+    def parse_source(self, source_code: str, filename: str) -> Optional[ast.AST]:
         try:
             self._source_code = source_code
             self._tree = ast.parse(source_code, filename)

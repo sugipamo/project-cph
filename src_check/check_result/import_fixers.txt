@@ -1,13 +1,18 @@
 === import_fixers ===
 
-失敗箇所: 2件
+失敗箇所: 7件
 ----------------------------------------
-1. /home/cphelper/project-cph/src/presentation/user_input_parser.py:422
-2. /home/cphelper/project-cph/src/infrastructure/specialized_drivers/persistence_driver.py:117
+1. /home/cphelper/project-cph/src/domain/step_runner.py:364
+2. /home/cphelper/project-cph/src/presentation/user_input_parser.py:422
+3. /home/cphelper/project-cph/src/configuration/di_config.py:236
+4. /home/cphelper/project-cph/src/configuration/di_config.py:237
+5. /home/cphelper/project-cph/src/configuration/di_config.py:238
+6. /home/cphelper/project-cph/src/configuration/di_config.py:239
+7. /home/cphelper/project-cph/src/infrastructure/drivers/generic/persistence_driver.py:126
 
 修正方針:
 --------------------
-2個のローカルインポートが2個のファイルで検出されました。
+7個のローカルインポートが4個のファイルで検出されました。
 関数内・メソッド内のimport文をファイル上部に移動することを推奨します。
 
 修正例:
@@ -23,4 +28,4 @@ import os  # ファイル上部に移動
 def some_function():
     return os.getcwd()
 
-実行時刻: 2025-06-28 10:58:37
+実行時刻: 2025-06-29 02:14:51

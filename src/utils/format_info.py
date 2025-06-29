@@ -41,10 +41,10 @@ class FormatInfo:
     def apply(self, text: str) -> str:
         if self.indent > 0:
             text = '    ' * self.indent + text
-        if self.formattype == LogFormatType.CUSTOM:
+        if self.formattype == LogFormatType.COLORED:
             text = self._apply_color(text)
             text = self._apply_bold(text)
             return text
-        if self.formattype == LogFormatType.RAW:
+        if self.formattype == LogFormatType.STRUCTURED:
             return text
         return self._remove_ansi(text)
