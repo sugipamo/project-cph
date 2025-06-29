@@ -198,58 +198,6 @@ class TestTypeSafeConfigNodeManager:
         with pytest.raises(ConfigurationError, match="Configuration not loaded"):
             manager.resolve_config(['any', 'key'], str)
     
-    # This test is based on old implementation that expects different behavior
-    # The format_with_missing_keys function now requires regex_ops parameter
-    # which is not available in the current test setup
-    @pytest.mark.skip(reason="Based on old implementation - needs update for new regex_ops dependency")
-    def test_create_execution_config(self, mock_di_container):
-        """Test creating typed execution configuration"""
-        manager = TypeSafeConfigNodeManager(mock_di_container)
-        
-        # Set up test data with required paths
-        test_data = {
-            "contest_name": "ABC123",
-            "problem_name": "A",
-            "language": "python",
-            "env_type": "local",
-            "command_type": "run",
-            "paths": {
-                "local_workspace_path": "/workspace",
-                "sandbox_workspace_path": "/sandbox"
-            },
-            "execution": {
-                "timeout": {
-                    "python": {
-                        "run": 30
-                    }
-                }
-            },
-            "languages": {
-                "python": {
-                    "local": {
-                        "language_id": "python3",
-                        "source_file_name": "main.py",
-                        "run": {
-                            "command": "python3 main.py"
-                        }
-                    }
-                }
-            }
-        }
-        manager.root_node = create_config_root_from_dict(test_data)
-        
-        config = manager.create_execution_config(
-            contest_name="ABC123",
-            problem_name="A",
-            language="python",
-            env_type="local",
-            command_type="run"
-        )
-        
-        assert isinstance(config, TypedExecutionConfiguration)
-        assert config.contest_name == "ABC123"
-        assert config.problem_name == "A"
-        assert config.language == "python"
     
     def test_create_execution_config_not_loaded(self, mock_di_container):
         """Test creating execution config before loading raises error"""

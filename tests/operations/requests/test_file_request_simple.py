@@ -145,9 +145,6 @@ class TestFileRequestSimple:
         result = FileRequest._resolve_driver(request, direct_driver)
         assert result == direct_driver
         
-    def test_handle_file_error_allow_failure(self, time_ops):
-        # Skip this test due to FileResult constructor mismatch with OperationResult
-        pytest.skip("FileResult constructor doesn't match OperationResult parent class")
         
     def test_handle_file_error_raise_exception(self, time_ops):
         from src.application.execution_requests import FileRequest

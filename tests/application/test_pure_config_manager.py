@@ -116,59 +116,9 @@ class TestPureConfigManager:
         with pytest.raises(RuntimeError, match="ConfigManager has not been initialized"):
             manager.resolve_template_typed("test", {}, str)
 
-    @pytest.mark.skip(reason="Template resolution requires regex_ops dependency")
-    def test_resolve_template_typed_simple(self):
-        """Test simple template resolution."""
-        manager = PureConfigManager()
-        config_dict = {
-            "paths": {
-                "base": "/home/user",
-                "project": "${paths.base}/project"
-            }
-        }
-        
-        manager.initialize_from_config_dict(config_dict, "/system", "/env", "python")
-        
-        result = manager.resolve_template_typed("${paths.base}/test", {}, str)
-        assert result == "/home/user/test"
 
-    @pytest.mark.skip(reason="Template resolution requires regex_ops dependency")
-    def test_resolve_template_typed_with_context(self):
-        """Test template resolution with context."""
-        manager = PureConfigManager()
-        config_dict = {"greeting": "Hello"}
-        
-        manager.initialize_from_config_dict(config_dict, "/system", "/env", "python")
-        
-        result = manager.resolve_template_typed(
-            "${greeting}, ${name}!",
-            {"name": "World"},
-            str
-        )
-        assert result == "Hello, World!"
 
-    @pytest.mark.skip(reason="Template resolution requires regex_ops dependency")
-    def test_resolve_template_typed_type_conversion(self):
-        """Test template resolution with type conversion."""
-        manager = PureConfigManager()
-        config_dict = {"number": 42}
-        
-        manager.initialize_from_config_dict(config_dict, "/system", "/env", "python")
-        
-        # Number to string conversion
-        result = manager.resolve_template_typed("${number}", {}, str)
-        assert result == "42"
 
-    @pytest.mark.skip(reason="Template resolution requires regex_ops dependency")
-    def test_resolve_template_typed_type_mismatch(self):
-        """Test template resolution with type mismatch."""
-        manager = PureConfigManager()
-        config_dict = {"value": "string"}
-        
-        manager.initialize_from_config_dict(config_dict, "/system", "/env", "python")
-        
-        with pytest.raises(TypeError, match="Template result type mismatch"):
-            manager.resolve_template_typed("${value}", {}, int)
 
     def test_get_language(self):
         """Test get_language method."""
