@@ -41,7 +41,7 @@ class TestMockTimeProvider:
 
     def test_init_with_default_time(self):
         """Test initialization with default time."""
-        provider = MockTimeProvider()
+        provider = MockTimeProvider(initial_time=0.0)
         assert provider._current_time == 0.0
         assert provider._sleep_calls == []
 
@@ -66,7 +66,7 @@ class TestMockTimeProvider:
 
     def test_multiple_sleep_calls(self):
         """Test multiple sleep calls accumulate."""
-        provider = MockTimeProvider()
+        provider = MockTimeProvider(initial_time=0.0)
         
         provider.sleep(1.0)
         provider.sleep(2.5)
@@ -93,7 +93,7 @@ class TestMockTimeProvider:
 
     def test_get_sleep_calls_returns_copy(self):
         """Test get_sleep_calls returns a copy."""
-        provider = MockTimeProvider()
+        provider = MockTimeProvider(initial_time=0.0)
         provider.sleep(1.0)
         
         calls = provider.get_sleep_calls()

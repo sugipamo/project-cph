@@ -381,10 +381,10 @@ class TestDockerContainerRepository:
                           'volumes': None, 'environment': None, 'ports': None}),
         ]
         
-        result = repository.find_unused_containers()
+        result = repository.find_unused_containers(days=7)
         
         assert len(result) == 1
-        # Check default 7 days parameter
+        # Check 7 days parameter was used
         call_args = mock_connection.execute.call_args
         assert call_args[0][1] == (7,)
     
@@ -510,7 +510,7 @@ class TestDockerContainerRepository:
             }),
         ]
         
-        result = repository.get_container_events('test-container')
+        result = repository.get_container_events('test-container', limit=100)
         
         assert len(result) == 2
         assert result[0]['event_type'] == 'started'
@@ -541,7 +541,7 @@ class TestDockerContainerRepository:
             }),
         ]
         
-        result = repository.get_container_events('test-container')
+        result = repository.get_container_events('test-container', limit=100)
         
         assert len(result) == 1
         assert result[0]['event_data'] is None  # Invalid JSON becomes None

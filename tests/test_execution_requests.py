@@ -387,7 +387,11 @@ class TestPythonRequest:
             os_provider=os_provider,
             python_utils=python_utils,
             time_ops=time_ops,
-            environment={"NEW_VAR": "value"}
+            name=None,
+            timeout=None,
+            environment={"NEW_VAR": "value"},
+            python_path=None,
+            debug_tag=None
         )
         
         env = request._prepare_environment()
@@ -471,9 +475,18 @@ class TestDockerRequest:
             operation=DockerOpType.BUILD,
             json_provider=json_provider,
             working_directory="/project",
+            name=None,
             image_name="myapp:latest",
+            container_name=None,
             dockerfile_path="./Dockerfile",
-            build_args={"VERSION": "1.0"}
+            build_args={"VERSION": "1.0"},
+            run_args=None,
+            command=None,
+            environment=None,
+            volumes=None,
+            ports=None,
+            network=None,
+            debug_tag=None
         )
         
         result = request._execute_core(driver, logger)
@@ -536,8 +549,18 @@ class TestDockerRequest:
             operation=DockerOpType.RUN,
             json_provider=json_provider,
             working_directory="/project",
+            name=None,
             image_name="myapp:latest",
-            container_name="myapp-container"
+            container_name="myapp-container",
+            dockerfile_path=None,
+            build_args=None,
+            run_args=None,
+            command=None,
+            environment=None,
+            volumes=None,
+            ports=None,
+            network=None,
+            debug_tag=None
         )
         
         result = request._execute_core(driver, logger)
@@ -558,7 +581,18 @@ class TestDockerRequest:
             operation=DockerOpType.STOP,
             json_provider=Mock(),
             working_directory="/project",
-            container_name="myapp-container"
+            name=None,
+            image_name=None,
+            container_name="myapp-container",
+            dockerfile_path=None,
+            build_args=None,
+            run_args=None,
+            command=None,
+            environment=None,
+            volumes=None,
+            ports=None,
+            network=None,
+            debug_tag=None
         )
         
         result = request._execute_core(driver, logger)

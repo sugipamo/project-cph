@@ -357,10 +357,10 @@ class TestDockerImageRepository:
             MockSQLiteRow({'id': 1, 'name': 'old-image', 'last_used_at': '2023-01-01'}),
         ]
         
-        result = repository.find_unused_images()
+        result = repository.find_unused_images(days=30)
         
         assert len(result) == 1
-        # Check default 30 days parameter
+        # Check 30 days parameter was used
         call_args = mock_connection.execute.call_args
         assert call_args[0][1] == (30,)
     

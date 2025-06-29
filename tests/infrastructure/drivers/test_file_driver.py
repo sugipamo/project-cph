@@ -488,7 +488,7 @@ class TestFileDriverDockerOperations:
     def test_docker_cp_without_driver(self):
         """Test docker_cp without docker driver raises error."""
         with pytest.raises(RuntimeError, match="Docker driver must be provided"):
-            self.driver.docker_cp("container", "/container/path", "/host/path")
+            self.driver.docker_cp("container", "/container/path", "/host/path", from_container=True, docker_driver=None)
 
     def test_docker_cp_from_container(self):
         """Test docker_cp from container to host."""

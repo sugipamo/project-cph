@@ -250,3 +250,168 @@ class TestCompositeRequest:
         
         # For now, it should still execute sequentially
         assert len(results) == 2
+
+    def test_execute_parallel_method(self):
+        """Test execute_parallel method with multiple requests."""
+        req1 = MockOperationRequest(name="req1")
+        req2 = MockOperationRequest(name="req2")
+        req3 = MockOperationRequest(name="req3")
+        driver = Mock()
+        logger = Mock()
+        
+        composite = CompositeRequest(
+            requests=[req1, req2, req3],
+            debug_tag=None,
+            name=None,
+            execution_controller=None
+        )
+        
+        # Execute in parallel with 2 workers
+        results = composite.execute_parallel(driver, max_workers=2, logger=logger)
+        
+        assert len(results) == 3
+        assert results[0] == "Result for req1"
+        assert results[1] == "Result for req2"
+        assert results[2] == "Result for req3"
+        assert req1.executed
+        assert req2.executed
+        assert req3.executed
+
+    def test_execute_parallel_with_controller(self):
+        """Test execute_parallel with execution controller."""
+        req1 = MockOperationRequest(name="req1")
+        req2 = MockOperationRequest(name="req2")
+        driver = Mock()
+        logger = Mock()
+        controller = Mock()
+        controller._check_failure = Mock()
+        
+        composite = CompositeRequest(
+            requests=[req1, req2],
+            debug_tag=None,
+            name=None,
+            execution_controller=controller
+        )
+        
+        results = composite.execute_parallel(driver, max_workers=2, logger=logger)
+        
+        assert len(results) == 2
+        # Controller should be called for each request
+        assert controller._check_failure.call_count == 2
+
+    def test_execute_parallel_with_failure(self):
+        """Test execute_parallel when a request fails."""
+        req1 = MockOperationRequest(name="req1")
+        req2 = MockOperationRequest(name="req2", should_fail=True)
+        req3 = MockOperationRequest(name="req3")
+        driver = Mock()
+        logger = Mock()
+        
+        composite = CompositeRequest(
+            requests=[req1, req2, req3],
+            debug_tag=None,
+            name=None,
+            execution_controller=None
+        )
+        
+        # Should raise exception from failed request
+        with pytest.raises(Exception, match="Mock failure"):
+            composite.execute_parallel(driver, max_workers=2, logger=logger)
+
+    def test_repr_method(self):
+        """Test __repr__ method."""
+        req1 = MockOperationRequest(name="req1")
+        req2 = MockOperationRequest(name="req2")
+        
+        composite = CompositeRequest(
+            requests=[req1, req2],
+            debug_tag=None,
+            name="test_composite",
+            execution_controller=None
+        )
+        
+        repr_str = repr(composite)
+        assert "CompositeRequest" in repr_str
+        assert "name=test_composite" in repr_str
+        assert "CompositeStructure" in repr_str
+
+    def test_make_composite_request_single(self):
+        """Test make_composite_request with single request."""
+        req = MockOperationRequest(name="single")
+        
+        # Without name
+        result = CompositeRequest.make_composite_request([req], debug_tag=None, name=None)
+        assert result is req
+        
+        # With name
+        req2 = MockOperationRequest(name="single2")
+        req2.set_name = Mock(return_value=req2)
+        result = CompositeRequest.make_composite_request([req2], debug_tag="tag", name="new_name")
+        assert result is req2
+        req2.set_name.assert_called_once_with("new_name")
+        assert req2.debug_tag == "tag"
+
+    def test_make_composite_request_multiple(self):
+        """Test make_composite_request with multiple requests."""
+        req1 = MockOperationRequest(name="req1")
+        req2 = MockOperationRequest(name="req2")
+        
+        result = CompositeRequest.make_composite_request(
+            [req1, req2], 
+            debug_tag="composite_tag", 
+            name="composite_name"
+        )
+        
+        assert isinstance(result, CompositeRequest)
+        assert result.name == "composite_name"
+        assert result.debug_tag == "composite_tag"
+        assert len(result) == 2
+
+    def test_count_leaf_requests(self):
+        """Test count_leaf_requests method."""
+        req1 = MockOperationRequest(name="req1")
+        req2 = MockOperationRequest(name="req2")
+        req3 = MockOperationRequest(name="req3")
+        
+        # Create nested composite requests
+        inner_composite = CompositeRequest(
+            requests=[req2, req3],
+            debug_tag=None,
+            name="inner",
+            execution_controller=None
+        )
+        
+        # Mock the count_leaf_requests method on structure
+        inner_composite.structure.count_leaf_requests = Mock(return_value=2)
+        
+        outer_composite = CompositeRequest(
+            requests=[req1, inner_composite],
+            debug_tag=None,
+            name="outer",
+            execution_controller=None
+        )
+        
+        # Mock the count_leaf_requests method on structure
+        outer_composite.structure.count_leaf_requests = Mock(return_value=3)
+        
+        assert outer_composite.count_leaf_requests() == 3
+        outer_composite.structure.count_leaf_requests.assert_called_once()
+
+    def test_requests_setter_during_init(self):
+        """Test requests setter behavior during initialization."""
+        # This tests the else clause in requests setter (line 37)
+        req1 = MockOperationRequest(name="req1")
+        req2 = MockOperationRequest(name="req2")
+        
+        # When the setter is called before structure exists (during __init__)
+        # it should handle gracefully
+        composite = CompositeRequest(
+            requests=[req1, req2],
+            debug_tag=None,
+            name=None,
+            execution_controller=None
+        )
+        
+        # Should have properly initialized
+        assert len(composite) == 2
+        assert composite.requests == [req1, req2]

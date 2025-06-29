@@ -168,6 +168,11 @@ class TestPythonRequest:
             script_or_code="print('test')",
             is_script_path=False,
             working_directory="/tmp",
+            name="test_python",
+            timeout=None,
+            environment=None,
+            python_path=None,
+            debug_tag=None,
             **providers
         )
         
@@ -187,7 +192,11 @@ class TestPythonRequest:
             script_or_code="test.py",
             is_script_path=True,
             working_directory="/tmp",
+            name="test_python_env",
+            timeout=None,
             environment={"CUSTOM_VAR": "value"},
+            python_path=None,
+            debug_tag=None,
             **providers
         )
         
@@ -219,6 +228,7 @@ class TestDockerRequest:
             command="echo test",
             dockerfile_path="./Dockerfile",
             build_args={"ARG": "value"},
+            run_args={},
             environment={"ENV": "value"},
             volumes={"/host": "/container"},
             ports={"8080": "80"},
@@ -256,8 +266,18 @@ class TestDockerRequest:
             operation=DockerOpType.BUILD,
             json_provider=json_provider,
             working_directory="/app",
+            name=None,
             image_name="test:latest",
-            dockerfile_path="./Dockerfile"
+            container_name=None,
+            dockerfile_path="./Dockerfile",
+            build_args=None,
+            run_args=None,
+            command=None,
+            environment=None,
+            volumes=None,
+            ports=None,
+            network=None,
+            debug_tag=None
         )
         
         result = request._execute_core(mock_driver, Mock())
@@ -285,9 +305,18 @@ class TestDockerRequest:
             operation=DockerOpType.RUN,
             json_provider=json_provider,
             working_directory="/app",
+            name=None,
             image_name="test:latest",
             container_name="test_container",
-            command="echo test"
+            dockerfile_path=None,
+            build_args=None,
+            run_args=None,
+            command="echo test",
+            environment=None,
+            volumes=None,
+            ports=None,
+            network=None,
+            debug_tag=None
         )
         
         result = request._execute_core(mock_driver, Mock())
@@ -313,7 +342,18 @@ class TestDockerRequest:
             operation=invalid_op,
             json_provider=json_provider,
             working_directory="/app",
-            image_name="test:latest"
+            name=None,
+            image_name="test:latest",
+            container_name=None,
+            dockerfile_path=None,
+            build_args=None,
+            run_args=None,
+            command=None,
+            environment=None,
+            volumes=None,
+            ports=None,
+            network=None,
+            debug_tag=None
         )
         
         result = request._execute_core(Mock(), Mock())
@@ -337,7 +377,12 @@ class TestFileRequestAdditional:
             operation=FileOpType.WRITE,
             path="/test/file.txt",
             time_ops=time_ops,
-            content=None
+            name=None,
+            content=None,
+            destination=None,
+            encoding='utf-8',
+            allow_failure=False,
+            debug_tag=None
         )
         
         with pytest.raises(ValueError, match="Content is required for write operation"):
@@ -349,7 +394,12 @@ class TestFileRequestAdditional:
             operation=FileOpType.COPY,
             path="/test/file.txt",
             time_ops=time_ops,
-            destination=None
+            name=None,
+            content=None,
+            destination=None,
+            encoding='utf-8',
+            allow_failure=False,
+            debug_tag=None
         )
         
         with pytest.raises(ValueError, match="Destination is required for copy operation"):
@@ -361,7 +411,12 @@ class TestFileRequestAdditional:
             operation=FileOpType.MOVE,
             path="/test/file.txt",
             time_ops=time_ops,
-            destination=None
+            name=None,
+            content=None,
+            destination=None,
+            encoding='utf-8',
+            allow_failure=False,
+            debug_tag=None
         )
         
         with pytest.raises(ValueError, match="Destination is required for move operation"):
@@ -373,7 +428,12 @@ class TestFileRequestAdditional:
             operation=FileOpType.READ,
             path="/test/file.txt",
             time_ops=time_ops,
-            allow_failure=True
+            name=None,
+            content=None,
+            destination=None,
+            encoding='utf-8',
+            allow_failure=True,
+            debug_tag=None
         )
         
         error = Exception("Test error")
@@ -388,7 +448,13 @@ class TestFileRequestAdditional:
         request = FileRequest(
             operation=FileOpType.READ,
             path="/test/file.txt",
-            time_ops=time_ops
+            time_ops=time_ops,
+            name=None,
+            content=None,
+            destination=None,
+            encoding='utf-8',
+            allow_failure=False,
+            debug_tag=None
         )
         
         mock_driver = Mock()
@@ -402,7 +468,13 @@ class TestFileRequestAdditional:
         request = FileRequest(
             operation=FileOpType.READ,
             path="/test/file.txt",
-            time_ops=time_ops
+            time_ops=time_ops,
+            name=None,
+            content=None,
+            destination=None,
+            encoding='utf-8',
+            allow_failure=False,
+            debug_tag=None
         )
         
         # Create a mock driver without file methods
@@ -423,7 +495,13 @@ class TestFileRequestAdditional:
         request = FileRequest(
             operation=FileOpType.RMTREE,
             path="/test/dir",
-            time_ops=time_ops
+            time_ops=time_ops,
+            name=None,
+            content=None,
+            destination=None,
+            encoding='utf-8',
+            allow_failure=False,
+            debug_tag=None
         )
         
         result = request._execute_rmtree(mock_driver, Mock())
@@ -440,7 +518,13 @@ class TestFileRequestAdditional:
         request = FileRequest(
             operation=FileOpType.TOUCH,
             path="/test/file.txt",
-            time_ops=time_ops
+            time_ops=time_ops,
+            name=None,
+            content=None,
+            destination=None,
+            encoding='utf-8',
+            allow_failure=False,
+            debug_tag=None
         )
         
         result = request._execute_touch(mock_driver, Mock())

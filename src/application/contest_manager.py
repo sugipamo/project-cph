@@ -35,6 +35,7 @@ class ContestManager:
                 name='load_shared_env_json',
                 content=None,
                 destination=None,
+                encoding='utf-8',
                 allow_failure=False,
                 debug_tag='load_shared_env'
             )
@@ -174,14 +175,14 @@ class ContestManager:
     def _directory_has_content(self, directory_path: str) -> bool:
         """Check if directory exists and has content."""
         time_ops = SystemTimeProvider()
-        req = FileRequest(operation=FileOpType.EXISTS, path=directory_path, time_ops=time_ops, content=None, destination=None, debug_tag='check_directory_content', name='check_directory_exists')
+        req = FileRequest(operation=FileOpType.EXISTS, path=directory_path, time_ops=time_ops, content=None, destination=None, encoding='utf-8', allow_failure=False, debug_tag='check_directory_content', name='check_directory_exists')
         result = req.execute_operation(driver=self.file_driver, logger=self.logger)
         return result.exists
 
     def _ensure_directory_exists(self, directory_path: str) -> bool:
         """Ensure directory exists, create if necessary."""
         time_ops = SystemTimeProvider()
-        req = FileRequest(operation=FileOpType.MKDIR, path=directory_path, time_ops=time_ops, content=None, destination=None, debug_tag='ensure_directory', name='create_directory')
+        req = FileRequest(operation=FileOpType.MKDIR, path=directory_path, time_ops=time_ops, content=None, destination=None, encoding='utf-8', allow_failure=False, debug_tag='ensure_directory', name='create_directory')
         result = req.execute_operation(driver=self.file_driver, logger=self.logger)
         if not result.success:
             raise RuntimeError(f"Failed to ensure directory exists '{directory_path}': {result.error_message}")
@@ -194,7 +195,7 @@ class ContestManager:
             source_item = self.os_provider.path_join(source_path, item)
             dest_item = self.os_provider.path_join(dest_path, item)
             time_ops = SystemTimeProvider()
-            req = FileRequest(operation=FileOpType.MOVE, path=source_item, time_ops=time_ops, content=None, destination=dest_item, debug_tag='move_directory_item', name='move_contest_file')
+            req = FileRequest(operation=FileOpType.MOVE, path=source_item, time_ops=time_ops, content=None, destination=dest_item, encoding='utf-8', allow_failure=False, debug_tag='move_directory_item', name='move_contest_file')
             move_result = req.execute_operation(driver=self.file_driver, logger=self.logger)
             if not move_result.success:
                 self.logger.error(f'Error moving directory contents: {move_result.error_message}')
@@ -209,10 +210,10 @@ class ContestManager:
                 item_path = self.os_provider.path_join(contest_current_path, item)
                 if self.os_provider.isdir(item_path):
                     time_ops = SystemTimeProvider()
-                    req = FileRequest(operation=FileOpType.RMTREE, path=item_path, time_ops=time_ops, content=None, destination=None, debug_tag='clear_directory', name='remove_directory_tree')
+                    req = FileRequest(operation=FileOpType.RMTREE, path=item_path, time_ops=time_ops, content=None, destination=None, encoding='utf-8', allow_failure=False, debug_tag='clear_directory', name='remove_directory_tree')
                 else:
                     time_ops = SystemTimeProvider()
-                    req = FileRequest(operation=FileOpType.REMOVE, path=item_path, time_ops=time_ops, content=None, destination=None, debug_tag='clear_file', name='remove_file')
+                    req = FileRequest(operation=FileOpType.REMOVE, path=item_path, time_ops=time_ops, content=None, destination=None, encoding='utf-8', allow_failure=False, debug_tag='clear_file', name='remove_file')
                 result = req.execute_operation(driver=self.file_driver, logger=self.logger)
                 if not result.success:
                     self.logger.error(f'Error clearing contest_current directory: {result.error_message}')
@@ -236,7 +237,7 @@ class ContestManager:
                     return False
                 continue
             time_ops = SystemTimeProvider()
-            req = FileRequest(operation=FileOpType.COPY, path=source_item, time_ops=time_ops, content=None, destination=dest_item, debug_tag='copy_file', name='copy_template_file')
+            req = FileRequest(operation=FileOpType.COPY, path=source_item, time_ops=time_ops, content=None, destination=dest_item, encoding='utf-8', allow_failure=False, debug_tag='copy_file', name='copy_template_file')
             copy_result = req.execute_operation(driver=self.file_driver, logger=self.logger)
             if not copy_result.success:
                 self.logger.error(f'Error copying file: {copy_result.error_message}')
@@ -268,7 +269,7 @@ class ContestManager:
                     return False
             else:
                 time_ops = SystemTimeProvider()
-                req = FileRequest(operation=FileOpType.COPY, path=source_item, time_ops=time_ops, content=None, destination=dest_item, debug_tag='copy_template_recursive', name='copy_template_recursive_file')
+                req = FileRequest(operation=FileOpType.COPY, path=source_item, time_ops=time_ops, content=None, destination=dest_item, encoding='utf-8', allow_failure=False, debug_tag='copy_template_recursive', name='copy_template_recursive_file')
                 result = req.execute_operation(driver=self.file_driver, logger=self.logger)
                 if not result.success:
                     self.logger.error(f'Failed to copy template file: {result.error_message}')

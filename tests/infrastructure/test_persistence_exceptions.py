@@ -81,7 +81,7 @@ class TestMigrationError:
 
     def test_without_migration_version(self):
         """Test without migration version"""
-        error = MigrationError("General migration error", details={"reason": "syntax error"})
+        error = MigrationError("General migration error", migration_version=None, details={"reason": "syntax error"})
         
         assert str(error) == "General migration error"
         assert error.operation == "migration"
@@ -106,7 +106,7 @@ class TestQueryError:
 
     def test_without_query_details(self):
         """Test without query details"""
-        error = QueryError("Unknown query error", details={"code": "SYNTAX_ERROR"})
+        error = QueryError("Unknown query error", query=None, params=None, details={"code": "SYNTAX_ERROR"})
         
         assert str(error) == "Unknown query error"
         assert error.operation == "query"
@@ -120,7 +120,7 @@ class TestTransactionError:
 
     def test_default_message(self):
         """Test default message"""
-        error = TransactionError(details={})
+        error = TransactionError("Transaction failed", details={})
         
         assert str(error) == "Transaction failed"
         assert error.operation == "transaction"
@@ -155,7 +155,7 @@ class TestRepositoryError:
 
     def test_minimal_attributes(self):
         """Test with minimal attributes"""
-        error = RepositoryError("Save failed", details={})
+        error = RepositoryError("Save failed", repository_name=None, entity_id=None, details={})
         
         assert str(error) == "Save failed"
         assert error.operation == "repository"
@@ -182,7 +182,7 @@ class TestIntegrityError:
 
     def test_without_constraint(self):
         """Test without constraint name"""
-        error = IntegrityError("Foreign key violation", details={"table": "orders"})
+        error = IntegrityError("Foreign key violation", constraint=None, details={"table": "orders"})
         
         assert str(error) == "Foreign key violation"
         assert error.operation == "integrity"
@@ -208,7 +208,7 @@ class TestSchemaError:
 
     def test_without_table_name(self):
         """Test without table name"""
-        error = SchemaError("Invalid schema version", details={"version": "1.0.0"})
+        error = SchemaError("Invalid schema version", table_name=None, details={"version": "1.0.0"})
         
         assert str(error) == "Invalid schema version"
         assert error.operation == "schema"
@@ -223,12 +223,12 @@ class TestExceptionHierarchy:
         """Test that all specific exceptions inherit from PersistenceError"""
         exceptions = [
             ConnectionError("test", details={}),
-            MigrationError("test", details={}),
-            QueryError("test", details={}),
+            MigrationError("test", migration_version=None, details={}),
+            QueryError("test", query=None, params=None, details={}),
             TransactionError("test", details={}),
-            RepositoryError("test", details={}),
-            IntegrityError("test", details={}),
-            SchemaError("test", details={})
+            RepositoryError("test", repository_name=None, entity_id=None, details={}),
+            IntegrityError("test", constraint=None, details={}),
+            SchemaError("test", table_name=None, details={})
         ]
         
         for exc in exceptions:
@@ -243,8 +243,8 @@ class TestExceptionHierarchy:
         
         # Can catch as PersistenceError
         with pytest.raises(PersistenceError):
-            raise QueryError("Query failed", details={})
+            raise QueryError("Query failed", query=None, params=None, details={})
         
         # Can catch as general Exception
         with pytest.raises(Exception):
-            raise SchemaError("Schema error", details={})
+            raise SchemaError("Schema error", table_name=None, details={})

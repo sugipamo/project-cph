@@ -201,7 +201,7 @@ class TestStepRunner:
         assert result[1]["cmd"] == "process test2.txt"
     
     @patch('src.domain.step_runner.StepType')
-    @patch('src.configuration.config_resolver.resolve_best')
+    @patch('src.domain.step_runner.resolve_best')
     def test_create_step_basic(self, mock_resolve_best, mock_step_type):
         """Test basic step creation"""
         json_step = {
@@ -245,7 +245,7 @@ class TestStepRunner:
             assert result == mock_step
             mock_step_class.assert_called_once()
     
-    @patch('src.configuration.config_resolver.resolve_best')
+    @patch('src.domain.step_runner.resolve_best')
     def test_create_step_with_when_condition_false(self, mock_resolve_best):
         """Test step creation with when condition - condition is stored but not evaluated during creation"""
         json_step = {

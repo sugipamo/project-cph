@@ -373,3 +373,443 @@ class TestDockerOperations:
         
         with pytest.raises(ValueError, match="Invalid Docker request"):
             self.driver.execute_command(mock_request)
+
+    @patch('src.infrastructure.drivers.docker.docker_driver.ShellRequest')
+    def test_stop_container(self, mock_shell_request_class):
+        """Test stopping a container."""
+        # Setup mocks
+        mock_request = Mock()
+        mock_result = Mock()
+        mock_result.success = True
+        mock_request.execute_operation.return_value = mock_result
+        mock_shell_request_class.return_value = mock_request
+        
+        # Mock _get_default_value
+        self.driver._get_default_value = Mock(side_effect=lambda key, default: default)
+        
+        # Execute
+        result = self.driver.stop_container(
+            name="test-container",
+            timeout=10,
+            show_output=True
+        )
+        
+        # Verify
+        assert result == mock_result
+        
+        # Verify ShellRequest creation
+        mock_shell_request_class.assert_called_once()
+        call_kwargs = mock_shell_request_class.call_args[1]
+        assert call_kwargs["show_output"] is True
+        assert call_kwargs["debug_tag"] == "docker_stop"
+        assert isinstance(call_kwargs["cmd"], list)
+        assert call_kwargs["cmd"][:3] == ["docker", "stop", "-t"]
+
+    @patch('src.infrastructure.drivers.docker.docker_driver.ShellRequest')
+    def test_stop_container_with_tracking(self, mock_shell_request_class):
+        """Test stopping a container with tracking enabled."""
+        # Setup driver with tracking
+        mock_container_repo = Mock()
+        driver = DockerDriver(
+            file_driver=self.mock_file_driver,
+            execution_driver=self.mock_execution_driver,
+            logger=self.mock_logger,
+            container_repo=mock_container_repo,
+            image_repo=None
+        )
+        
+        # Setup mocks
+        mock_request = Mock()
+        mock_result = Mock()
+        mock_result.success = True
+        mock_request.execute_operation.return_value = mock_result
+        mock_shell_request_class.return_value = mock_request
+        
+        driver._get_default_value = Mock(side_effect=lambda key, default: default)
+        
+        # Execute
+        result = driver.stop_container(
+            name="test-container",
+            timeout=10,
+            show_output=True
+        )
+        
+        # Verify tracking was called
+        mock_container_repo.update_container_status.assert_called_once_with("test-container", "stopped", "stopped_at")
+        mock_container_repo.add_lifecycle_event.assert_called_once_with("test-container", "stopped", {})
+
+    @patch('src.infrastructure.drivers.docker.docker_driver.ShellRequest')
+    def test_remove_container(self, mock_shell_request_class):
+        """Test removing a container."""
+        # Setup mocks
+        mock_request = Mock()
+        mock_result = Mock()
+        mock_result.success = True
+        mock_request.execute_operation.return_value = mock_result
+        mock_shell_request_class.return_value = mock_request
+        
+        # Mock _get_default_value
+        self.driver._get_default_value = Mock(side_effect=lambda key, default: default)
+        
+        # Execute
+        result = self.driver.remove_container(
+            name="test-container",
+            force=True,
+            show_output=True
+        )
+        
+        # Verify
+        assert result == mock_result
+        
+        # Verify ShellRequest creation
+        mock_shell_request_class.assert_called_once()
+        call_kwargs = mock_shell_request_class.call_args[1]
+        assert call_kwargs["show_output"] is True
+        assert call_kwargs["debug_tag"] == "docker_rm"
+        assert isinstance(call_kwargs["cmd"], list)
+        assert call_kwargs["cmd"][:2] == ["docker", "rm"]
+
+    @patch('src.infrastructure.drivers.docker.docker_driver.ShellRequest')
+    def test_remove_container_with_tracking(self, mock_shell_request_class):
+        """Test removing a container with tracking enabled."""
+        # Setup driver with tracking
+        mock_container_repo = Mock()
+        driver = DockerDriver(
+            file_driver=self.mock_file_driver,
+            execution_driver=self.mock_execution_driver,
+            logger=self.mock_logger,
+            container_repo=mock_container_repo,
+            image_repo=None
+        )
+        
+        # Setup mocks
+        mock_request = Mock()
+        mock_result = Mock()
+        mock_result.success = True
+        mock_request.execute_operation.return_value = mock_result
+        mock_shell_request_class.return_value = mock_request
+        
+        driver._get_default_value = Mock(side_effect=lambda key, default: default)
+        
+        # Execute
+        result = driver.remove_container(
+            name="test-container",
+            force=False,
+            show_output=True
+        )
+        
+        # Verify tracking was called
+        mock_container_repo.update_container_status.assert_called_once_with("test-container", "removed", "removed_at")
+        mock_container_repo.add_lifecycle_event.assert_called_once_with("test-container", "removed", {})
+
+    @patch('src.infrastructure.drivers.docker.docker_driver.ShellRequest')
+    def test_build_docker_image(self, mock_shell_request_class):
+        """Test building a Docker image."""
+        # Setup mocks
+        mock_request = Mock()
+        mock_result = Mock()
+        mock_result.success = True
+        mock_request.execute_operation.return_value = mock_result
+        mock_shell_request_class.return_value = mock_request
+        
+        # Mock _get_default_value
+        self.driver._get_default_value = Mock(side_effect=lambda key, default: default)
+        
+        # Execute
+        result = self.driver.build_docker_image(
+            image_name="myapp:latest",
+            dockerfile_path="Dockerfile",
+            build_args={"VERSION": "1.0"},
+            show_output=True
+        )
+        
+        # Verify
+        assert result == mock_result
+        
+        # Verify ShellRequest creation
+        mock_shell_request_class.assert_called_once()
+        call_kwargs = mock_shell_request_class.call_args[1]
+        assert call_kwargs["show_output"] is True
+        assert call_kwargs["debug_tag"] == "docker_build"
+        assert isinstance(call_kwargs["cmd"], list)
+        assert call_kwargs["cmd"][:2] == ["docker", "build"]
+
+    def test_build_docker_image_invalid_name(self):
+        """Test building image with invalid name."""
+        with pytest.raises(ValueError, match="Invalid Docker image name"):
+            self.driver.build_docker_image(
+                image_name="INVALID NAME",
+                dockerfile_path="Dockerfile",
+                build_args=None,
+                show_output=True
+            )
+
+    @patch('src.infrastructure.drivers.docker.docker_driver.ShellRequest')
+    def test_build_docker_image_with_tracking(self, mock_shell_request_class):
+        """Test building a Docker image with tracking enabled."""
+        # Setup driver with tracking
+        mock_image_repo = Mock()
+        driver = DockerDriver(
+            file_driver=self.mock_file_driver,
+            execution_driver=self.mock_execution_driver,
+            logger=self.mock_logger,
+            container_repo=None,
+            image_repo=mock_image_repo
+        )
+        
+        # Setup mocks
+        mock_request = Mock()
+        mock_result = Mock()
+        mock_result.success = True
+        mock_request.execute_operation.return_value = mock_result
+        mock_shell_request_class.return_value = mock_request
+        
+        driver._get_default_value = Mock(side_effect=lambda key, default: default)
+        
+        # Execute
+        result = driver.build_docker_image(
+            image_name="myapp:latest",
+            dockerfile_path="Dockerfile",
+            build_args={"VERSION": "1.0"},
+            show_output=True
+        )
+        
+        # Verify tracking was called
+        mock_image_repo.record_image_build.assert_called_once()
+
+    @patch('src.infrastructure.drivers.docker.docker_driver.ShellRequest')
+    def test_exec_in_container(self, mock_shell_request_class):
+        """Test executing command in container."""
+        # Setup mocks
+        mock_request = Mock()
+        mock_result = Mock()
+        mock_request.execute_operation.return_value = mock_result
+        mock_shell_request_class.return_value = mock_request
+        
+        # Mock _get_default_value
+        self.driver._get_default_value = Mock(side_effect=lambda key, default: default)
+        
+        # Test with string command
+        result = self.driver.exec_in_container(
+            container_name="test-container",
+            command="ls -la",
+            interactive=True,
+            tty=True,
+            show_output=True
+        )
+        
+        # Verify
+        assert result == mock_result
+        
+        # Verify ShellRequest creation
+        mock_shell_request_class.assert_called_once()
+        call_kwargs = mock_shell_request_class.call_args[1]
+        assert call_kwargs["show_output"] is True
+        assert call_kwargs["debug_tag"] == "docker_exec"
+        assert isinstance(call_kwargs["cmd"], list)
+        assert call_kwargs["cmd"][:4] == ["docker", "exec", "-i", "-t"]
+
+    @patch('src.infrastructure.drivers.docker.docker_driver.ShellRequest')
+    def test_exec_in_container_list_command(self, mock_shell_request_class):
+        """Test executing command in container with list command."""
+        # Setup mocks
+        mock_request = Mock()
+        mock_result = Mock()
+        mock_request.execute_operation.return_value = mock_result
+        mock_shell_request_class.return_value = mock_request
+        
+        # Mock _get_default_value
+        self.driver._get_default_value = Mock(side_effect=lambda key, default: default)
+        
+        # Test with list command
+        result = self.driver.exec_in_container(
+            container_name="test-container",
+            command=["python", "app.py"],
+            interactive=False,
+            tty=False,
+            show_output=True
+        )
+        
+        # Verify
+        assert result == mock_result
+        
+        # Verify ShellRequest creation
+        call_kwargs = mock_shell_request_class.call_args[1]
+        assert call_kwargs["cmd"] == ["docker", "exec", "test-container", "python", "app.py"]
+
+    @patch('src.infrastructure.drivers.docker.docker_driver.ShellRequest')
+    def test_get_logs(self, mock_shell_request_class):
+        """Test getting container logs."""
+        # Setup mocks
+        mock_request = Mock()
+        mock_result = Mock()
+        mock_request.execute_operation.return_value = mock_result
+        mock_shell_request_class.return_value = mock_request
+        
+        # Mock _get_default_value
+        self.driver._get_default_value = Mock(side_effect=lambda key, default: default)
+        
+        # Test with follow and tail
+        result = self.driver.get_logs(
+            container_name="test-container",
+            follow=True,
+            tail=100,
+            show_output=True
+        )
+        
+        # Verify
+        assert result == mock_result
+        
+        # Verify ShellRequest creation
+        mock_shell_request_class.assert_called_once()
+        call_kwargs = mock_shell_request_class.call_args[1]
+        assert call_kwargs["show_output"] is True
+        assert call_kwargs["debug_tag"] == "docker_logs"
+        assert call_kwargs["cmd"] == ["docker", "logs", "-f", "--tail", "100", "test-container"]
+        assert call_kwargs["timeout"] is None  # No timeout when following
+
+    @patch('src.infrastructure.drivers.docker.docker_driver.ShellRequest')
+    def test_get_logs_no_follow(self, mock_shell_request_class):
+        """Test getting container logs without follow."""
+        # Setup mocks
+        mock_request = Mock()
+        mock_result = Mock()
+        mock_request.execute_operation.return_value = mock_result
+        mock_shell_request_class.return_value = mock_request
+        
+        # Mock _get_default_value
+        self.driver._get_default_value = Mock(side_effect=lambda key, default: default)
+        
+        # Test without follow
+        result = self.driver.get_logs(
+            container_name="test-container",
+            follow=False,
+            tail=None,
+            show_output=True
+        )
+        
+        # Verify
+        call_kwargs = mock_shell_request_class.call_args[1]
+        assert call_kwargs["cmd"] == ["docker", "logs", "test-container"]
+        assert call_kwargs["timeout"] == 30  # Default timeout when not following
+
+    @patch('src.infrastructure.drivers.docker.docker_driver.ShellRequest')
+    def test_ps(self, mock_shell_request_class):
+        """Test listing containers."""
+        # Setup mocks
+        mock_request = Mock()
+        mock_result = Mock()
+        mock_request.execute_operation.return_value = mock_result
+        mock_shell_request_class.return_value = mock_request
+        
+        # Mock _get_default_value
+        self.driver._get_default_value = Mock(side_effect=lambda key, default: default)
+        
+        # Test with all containers
+        result = self.driver.ps(
+            all_containers=True,
+            show_output=True
+        )
+        
+        # Verify
+        assert result == mock_result
+        
+        # Verify ShellRequest creation
+        mock_shell_request_class.assert_called_once()
+        call_kwargs = mock_shell_request_class.call_args[1]
+        assert call_kwargs["show_output"] is True
+        assert call_kwargs["debug_tag"] == "docker_ps"
+        assert call_kwargs["cmd"] == ["docker", "ps", "-a"]
+
+    @patch('src.infrastructure.drivers.docker.docker_driver.ShellRequest')
+    def test_ps_running_only(self, mock_shell_request_class):
+        """Test listing only running containers."""
+        # Setup mocks
+        mock_request = Mock()
+        mock_result = Mock()
+        mock_request.execute_operation.return_value = mock_result
+        mock_shell_request_class.return_value = mock_request
+        
+        # Mock _get_default_value
+        self.driver._get_default_value = Mock(side_effect=lambda key, default: default)
+        
+        # Test without all containers
+        result = self.driver.ps(
+            all_containers=False,
+            show_output=True
+        )
+        
+        # Verify
+        call_kwargs = mock_shell_request_class.call_args[1]
+        assert call_kwargs["cmd"] == ["docker", "ps"]
+
+    def test_track_container_start_with_container_id(self):
+        """Test tracking container start with container ID."""
+        mock_container_repo = Mock()
+        driver = DockerDriver(
+            file_driver=self.mock_file_driver,
+            execution_driver=None,
+            logger=None,
+            container_repo=mock_container_repo,
+            image_repo=None
+        )
+        
+        mock_result = Mock()
+        mock_result.stdout = "a" * 64  # Valid container ID
+        
+        driver._track_container_start("test-container", "ubuntu:20.04", {"detach": True}, mock_result)
+        
+        mock_container_repo.update_container_status.assert_called_once_with("test-container", "running", "started_at")
+        mock_container_repo.add_lifecycle_event.assert_called_once()
+        mock_container_repo.update_container_id.assert_called_once_with("test-container", "a" * 64)
+
+    def test_track_container_start_exception_suppressed(self):
+        """Test tracking container start with exception suppressed."""
+        mock_container_repo = Mock()
+        mock_container_repo.update_container_status.side_effect = Exception("DB error")
+        
+        driver = DockerDriver(
+            file_driver=self.mock_file_driver,
+            execution_driver=None,
+            logger=None,
+            container_repo=mock_container_repo,
+            image_repo=None
+        )
+        
+        mock_result = Mock()
+        mock_result.stdout = ""
+        
+        # Should not raise exception
+        driver._track_container_start("test-container", "ubuntu:20.04", {}, mock_result)
+
+    def test_run_container_with_tracking(self):
+        """Test run container with tracking enabled."""
+        mock_container_repo = Mock()
+        driver = DockerDriver(
+            file_driver=self.mock_file_driver,
+            execution_driver=self.mock_execution_driver,
+            logger=self.mock_logger,
+            container_repo=mock_container_repo,
+            image_repo=None
+        )
+        
+        with patch('src.infrastructure.drivers.docker.docker_driver.ShellRequest') as mock_shell_request_class:
+            mock_request = Mock()
+            mock_result = Mock()
+            mock_result.success = True
+            mock_result.stdout = "container123"
+            mock_request.execute_operation.return_value = mock_result
+            mock_shell_request_class.return_value = mock_request
+            
+            driver._get_default_value = Mock(side_effect=lambda key, default: default)
+            
+            result = driver.run_container(
+                image="ubuntu:20.04",
+                name="test-container",
+                options={},
+                show_output=True
+            )
+            
+            # Verify tracking was called
+            mock_container_repo.update_container_status.assert_called_once()
+            mock_container_repo.add_lifecycle_event.assert_called_once()

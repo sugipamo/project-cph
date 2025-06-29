@@ -30,7 +30,13 @@ class TestFileRequestSimple:
         request = FileRequest(
             operation=FileOpType.READ,
             path="/test/file.txt",
-            time_ops=time_ops
+            time_ops=time_ops,
+            name=None,
+            content=None,
+            destination=None,
+            encoding='utf-8',
+            allow_failure=False,
+            debug_tag=None
         )
         
         # Mock the _execute_read method
@@ -49,7 +55,12 @@ class TestFileRequestSimple:
             operation=FileOpType.WRITE,
             path="/test/file.txt",
             time_ops=time_ops,
-            content="test content"
+            name=None,
+            content="test content",
+            destination=None,
+            encoding='utf-8',
+            allow_failure=False,
+            debug_tag=None
         )
         
         mock_result = Mock(success=True)
@@ -65,7 +76,13 @@ class TestFileRequestSimple:
         request = FileRequest(
             operation=FileOpType.EXISTS,
             path="/test/file.txt",
-            time_ops=time_ops
+            time_ops=time_ops,
+            name=None,
+            content=None,
+            destination=None,
+            encoding='utf-8',
+            allow_failure=False,
+            debug_tag=None
         )
         
         mock_result = Mock(success=True)
@@ -82,7 +99,12 @@ class TestFileRequestSimple:
             operation=FileOpType.MOVE,
             path="/test/file.txt",
             time_ops=time_ops,
-            destination="/test/new_file.txt"
+            name=None,
+            content=None,
+            destination="/test/new_file.txt",
+            encoding='utf-8',
+            allow_failure=False,
+            debug_tag=None
         )
         
         mock_result = Mock(success=True)
@@ -99,7 +121,13 @@ class TestFileRequestSimple:
             request = FileRequest(
                 operation=op,
                 path="/test/path",
-                time_ops=time_ops
+                time_ops=time_ops,
+                name=None,
+                content=None,
+                destination=None,
+                encoding='utf-8',
+                allow_failure=False,
+                debug_tag=None
             )
             
             mock_result = Mock(success=True)
@@ -124,7 +152,13 @@ class TestFileRequestSimple:
         request = FileRequest(
             operation=FileOpType.READ,
             path="/test/file.txt",
-            time_ops=time_ops
+            time_ops=time_ops,
+            name=None,
+            content=None,
+            destination=None,
+            encoding='utf-8',
+            allow_failure=False,
+            debug_tag=None
         )
         
         # Override the operation with invalid value
@@ -153,7 +187,12 @@ class TestFileRequestSimple:
             operation=FileOpType.READ,
             path="/test/path",
             time_ops=time_ops,
-            allow_failure=False
+            name=None,
+            content=None,
+            destination=None,
+            encoding='utf-8',
+            allow_failure=False,
+            debug_tag=None
         )
         
         error = Exception("Test error")
