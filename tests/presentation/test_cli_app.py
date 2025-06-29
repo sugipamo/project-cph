@@ -307,6 +307,102 @@ class TestMinimalCLIApp:
         
         assert output is None
 
+    def test_handle_composite_step_failure(self):
+        """Test handling composite step failure."""
+        logger = Mock()
+        logger.output_manager = Mock()
+        logger.output_manager.flush = Mock()
+        
+        # Create composite step failure exception
+        original_exception = Exception("Original error")
+        result = Mock()
+        result.get_error_output.return_value = "Detailed error output"
+        
+        exception = CompositeStepFailureError("Test failure", result=result, original_exception=original_exception)
+        
+        app = MinimalCLIApp(Mock(), logger)
+        exit_code = app._handle_composite_step_failure(exception)
+        
+        assert exit_code == 1
+        # Verify error logging
+        logger.error.assert_any_call("CompositeStepFailure: Test failure")
+        logger.error.assert_any_call("🚨 実行エラーが発生しました")
+        logger.error.assert_any_call("詳細:")
+        logger.error.assert_any_call("Detailed error output")
+        logger.error.assert_any_call("元の例外: Exception")
+
+    def test_handle_composite_step_failure_no_result(self):
+        """Test handling composite step failure without result."""
+        logger = Mock()
+        logger.output_manager = Mock()
+        logger.output_manager.flush = Mock()
+        
+        exception = CompositeStepFailureError("Test failure", None)
+        exception.result = None
+        
+        app = MinimalCLIApp(Mock(), logger)
+        exit_code = app._handle_composite_step_failure(exception)
+        
+        assert exit_code == 1
+        # Verify error output was not attempted
+        logger.error.assert_any_call("CompositeStepFailure: Test failure")
+        # Should not log "詳細:" when no result
+        assert not any(call[0][0] == "詳細:" for call in logger.error.call_args_list)
+
+    @patch('src.presentation.cli_app.classify_error')
+    @patch('src.presentation.cli_app.ErrorSuggestion')
+    def test_handle_general_exception(self, mock_error_suggestion, mock_classify):
+        """Test handling general exception."""
+        logger = Mock()
+        logger.output_manager = Mock()
+        logger.output_manager.flush = Mock()
+        
+        # Mock error classification
+        mock_classify.return_value = ErrorCode.FILE_NOT_FOUND
+        mock_error_suggestion.get_suggestion.return_value = "Check file path"
+        mock_error_suggestion.get_recovery_actions.return_value = ["Action 1", "Action 2"]
+        
+        exception = Exception("Test error")
+        args = ["test", "command"]
+        
+        app = MinimalCLIApp(Mock(), logger)
+        exit_code = app._handle_general_exception(exception, args)
+        
+        assert exit_code == 1
+        logger.error.assert_any_call("一般例外: Test error")
+        logger.error.assert_any_call("🚨 予期せぬエラーが発生しました")
+        logger.error.assert_any_call("エラー内容: Test error")
+        logger.error.assert_any_call("分類: FILE_NOT_FOUND")
+        logger.error.assert_any_call("提案: Check file path")
+        logger.error.assert_any_call("  1. Action 1")
+        logger.error.assert_any_call("  2. Action 2")
+
+    @patch('src.presentation.cli_app.classify_error')
+    @patch('src.presentation.cli_app.ErrorSuggestion')
+    @patch('src.presentation.cli_app.traceback')
+    def test_handle_general_exception_debug_mode(self, mock_traceback, mock_error_suggestion, mock_classify):
+        """Test handling general exception with debug mode."""
+        logger = Mock()
+        logger.output_manager = Mock()
+        logger.output_manager.flush = Mock()
+        
+        # Mock error classification
+        mock_classify.return_value = ErrorCode.UNKNOWN_ERROR
+        mock_error_suggestion.get_suggestion.return_value = "Unknown error"
+        mock_error_suggestion.get_recovery_actions.return_value = []
+        mock_traceback.format_exc.return_value = "Stack trace details"
+        
+        exception = Exception("Test error")
+        args = ["test", "--debug", "command"]
+        
+        app = MinimalCLIApp(Mock(), logger)
+        exit_code = app._handle_general_exception(exception, args)
+        
+        assert exit_code == 1
+        logger.debug.assert_any_call("スタックトレース: Stack trace details")
+        logger.debug.assert_any_call("デバッグ情報:")
+        logger.debug.assert_any_call("Stack trace details")
+
 
 class TestMainFunction:
     """Test cases for main function."""

@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from src.application.color_manager import apply_color
-from src.utils.log_format_type import LogFormatType
+from src.logging.log_format_type import LogFormatType
 
 
 @dataclass

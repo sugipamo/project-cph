@@ -6,6 +6,7 @@ from typing import Any, Optional, Union
 # 互換性維持: Docker naming機能とフォーマッターはmain.pyから注入されるべき
 # 純粋関数の使用は許可されるが、依存性注入の観点から改善推奨
 from src.presentation.formatters import format_string_simple, format_with_missing_keys
+from src.utils.regex_provider import RegexProvider
 
 # 新設定システムをサポート
 # 互換性維持: TypedExecutionConfigurationは依存性注入で提供される
@@ -97,7 +98,7 @@ def format_template_string(template: str, data: Union[ExecutionFormatData, Any])
         Tuple[str, set]: (フォーマット済み文字列, 見つからなかったキーのセット)
     """
     # TypedExecutionConfigurationの場合
-    if hasattr(data, 'command_type') and hasattr(data, 'language'):
+    if hasattr(data, 'command_type') and hasattr(data, 'language') and hasattr(data, 'local_workspace_path'):
         # ConfigNodeベースのテンプレート展開を優先
         if hasattr(data, 'resolve_formatted_string'):
             try:
@@ -111,7 +112,8 @@ def format_template_string(template: str, data: Union[ExecutionFormatData, Any])
         # ExecutionFormatDataの場合
         format_dict = create_format_dict(data)
 
-    formatted, missing_list = format_with_missing_keys(template, **format_dict)
+    regex_ops = RegexProvider()
+    formatted, missing_list = format_with_missing_keys(template, regex_ops, **format_dict)
     return formatted, set(missing_list)
 
 
