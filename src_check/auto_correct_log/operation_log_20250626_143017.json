@@ -1,0 +1,28 @@
+{
+  "timestamp": "20250626_143017",
+  "log_dir": "src_check/auto_correct_log",
+  "note": "バックアップは無効化されています。変更はGitで管理してください。",
+  "moves": [
+    {
+      "source": "/home/cphelper/project-cph/src/infrastructure/fast_sqlite_manager.py",
+      "destination": "/home/cphelper/project-cph/src/application/fast_sqlite_manager.py",
+      "reason": "applicationカテゴリに属するため"
+    },
+    {
+      "source": "/home/cphelper/project-cph/src/infrastructure/sqlite_manager.py",
+      "destination": "/home/cphelper/project-cph/src/application/sqlite_manager.py",
+      "reason": "applicationカテゴリに属するため"
+    },
+    {
+      "source": "/home/cphelper/project-cph/src/logging/mock_output_manager.py",
+      "destination": "/home/cphelper/project-cph/src/application/mock_output_manager.py",
+      "reason": "applicationカテゴリに属するため"
+    },
+    {
+      "source": "/home/cphelper/project-cph/src/domain/__init__.py",
+      "destination": "/home/cphelper/project-cph/src/presentation/__init__.py",
+      "reason": "presentationカテゴリに属するため"
+    }
+  ],
+  "import_updates": []
+}

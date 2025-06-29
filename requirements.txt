@@ -1,9 +1,0 @@
-pytest==8.3.5
-pytest-asyncio==0.26.0
-pytest-cov==6.1.1
-coverage==7.8.0
-ruff==0.11.13
-iniconfig==2.1.0
-pluggy==1.5.0
-hypothesis==6.120.0
-click==8.1.7
