@@ -48,7 +48,13 @@ class TestShellRequest:
             command="echo test",
             working_directory="/tmp",
             error_converter=Mock(),
-            result_factory=Mock()
+            result_factory=Mock(),
+            name="test_shell",
+            timeout=None,
+            environment=None,
+            shell=True,
+            retry_config=None,
+            debug_tag=None
         )
         
         assert request.operation_type == OperationType.SHELL
@@ -76,7 +82,13 @@ class TestShellRequest:
             command="echo test",
             working_directory="/tmp",
             error_converter=error_converter,
-            result_factory=result_factory
+            result_factory=result_factory,
+            name="test_shell",
+            timeout=None,
+            environment=None,
+            shell=None,
+            retry_config=None,
+            debug_tag=None
         )
         
         result = request._execute_core(driver, logger)
@@ -128,7 +140,13 @@ class TestShellRequest:
             command="invalid_command",
             working_directory="/tmp",
             error_converter=error_converter,
-            result_factory=result_factory
+            result_factory=result_factory,
+            name="test_shell",
+            timeout=None,
+            environment=None,
+            shell=None,
+            retry_config=None,
+            debug_tag=None
         )
         
         result = request._execute_core(driver, logger)
@@ -165,7 +183,12 @@ class TestShellRequest:
             working_directory="/tmp",
             error_converter=error_converter,
             result_factory=result_factory,
-            retry_config={"max_attempts": 3}
+            name="test_shell",
+            timeout=None,
+            environment=None,
+            shell=None,
+            retry_config={"max_attempts": 3},
+            debug_tag=None
         )
         
         result = request._execute_core(driver, logger)
@@ -194,7 +217,13 @@ class TestShellRequest:
             command="echo test",
             working_directory="/tmp",
             error_converter=error_converter,
-            result_factory=result_factory
+            result_factory=result_factory,
+            name="test_shell",
+            timeout=None,
+            environment=None,
+            shell=None,
+            retry_config=None,
+            debug_tag=None
         )
         
         result = request._execute_core(driver, logger)

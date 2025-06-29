@@ -94,8 +94,10 @@ class TestExecutionDriverInterface:
         driver = ConcreteDriver()
         driver._infrastructure_defaults = {"key": "value"}
         
-        assert driver._get_default_value("key", None) == "value"
-        assert driver._get_default_value("missing", "default") == "default"
+        assert driver._get_default_value("key") == "value"
+        
+        with pytest.raises(ValueError, match="Configuration key 'missing' not found"):
+            driver._get_default_value("missing")
     
     def test_get_default_value_nested(self):
         """Test getting nested default values."""
@@ -108,9 +110,11 @@ class TestExecutionDriverInterface:
             }
         }
         
-        assert driver._get_default_value("docker.network.name", None) == "test_network"
-        assert driver._get_default_value("docker.network", None) == {"name": "test_network"}
-        assert driver._get_default_value("docker.missing.key", "default") == "default"
+        assert driver._get_default_value("docker.network.name") == "test_network"
+        assert driver._get_default_value("docker.network") == {"name": "test_network"}
+        
+        with pytest.raises(ValueError, match="Configuration key 'docker.missing.key' not found"):
+            driver._get_default_value("docker.missing.key")
     
     def test_get_default_value_cached(self):
         """Test that default values are cached."""
@@ -118,7 +122,7 @@ class TestExecutionDriverInterface:
         driver._infrastructure_defaults = {"key": "value"}
         
         # First call
-        value1 = driver._get_default_value("key", None)
+        value1 = driver._get_default_value("key")
         assert value1 == "value"
         assert "key" in driver._default_cache
         
@@ -126,7 +130,7 @@ class TestExecutionDriverInterface:
         driver._infrastructure_defaults = {"key": "new_value"}
         
         # Should return cached value
-        value2 = driver._get_default_value("key", None)
+        value2 = driver._get_default_value("key")
         assert value2 == "value"  # Still the cached value
     
     def test_get_default_value_loads_defaults(self):
@@ -136,7 +140,7 @@ class TestExecutionDriverInterface:
         
         with patch('pathlib.Path.exists', return_value=True):
             with patch('builtins.open', mock_open(read_data=json.dumps(mock_data))):
-                value = driver._get_default_value("test.nested", None)
+                value = driver._get_default_value("test.nested")
                 
         assert value == "value"
     
@@ -147,8 +151,9 @@ class TestExecutionDriverInterface:
             "key": "string_value"
         }
         
-        # Trying to navigate into a string
-        assert driver._get_default_value("key.nested", "default") == "default"
+        # Trying to navigate into a string should raise ValueError
+        with pytest.raises(ValueError, match="Configuration key 'key.nested' not found"):
+            driver._get_default_value("key.nested")
     
     def test_path_resolution_to_project_root(self):
         """Test finding project root from file path."""

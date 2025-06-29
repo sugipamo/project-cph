@@ -373,7 +373,12 @@ class DockerRequest(OperationRequestFoundation):
             working_directory=self.working_directory,
             error_converter=error_converter,
             result_factory=result_factory,
-            name=f"Pull {self.image_name}"
+            name=f"Pull {self.image_name}",
+            timeout=None,
+            environment=None,
+            shell=True,
+            retry_config=None,
+            debug_tag=None
         )
         requests.append(pull_request)
 
@@ -384,7 +389,12 @@ class DockerRequest(OperationRequestFoundation):
             working_directory=self.working_directory,
             error_converter=error_converter,
             result_factory=result_factory,
-            name=f"Run {self.image_name}"
+            name=f"Run {self.image_name}",
+            timeout=None,
+            environment=None,
+            shell=True,
+            retry_config=None,
+            debug_tag=None
         )
         requests.append(run_request)
 

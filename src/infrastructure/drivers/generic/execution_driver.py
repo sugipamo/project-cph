@@ -152,7 +152,12 @@ class ExecutionDriver(BaseDriverImplementation):
 
         self.log_info(f"Changing permissions: {path} to {mode}")
 
-        return self.execute_shell_command(cmd, cwd=cwd)
+        # Get default values from config
+        env = self._get_default_value("infrastructure_defaults.shell.env")
+        inputdata = self._get_default_value("infrastructure_defaults.shell.inputdata")
+        timeout = self._get_default_value("infrastructure_defaults.shell.timeout")
+        
+        return self.execute_shell_command(cmd, cwd=cwd, env=env, inputdata=inputdata, timeout=timeout)
 
     def which(self, command: str) -> Optional[str]:
         """Find the path of a command using 'which'.
@@ -163,7 +168,13 @@ class ExecutionDriver(BaseDriverImplementation):
         Returns:
             Path to command or None if not found
         """
-        result = self.execute_shell_command(["which", command])
+        # Get default values from config
+        cwd = self._get_default_value("infrastructure_defaults.shell.cwd")
+        env = self._get_default_value("infrastructure_defaults.shell.env")
+        inputdata = self._get_default_value("infrastructure_defaults.shell.inputdata")
+        timeout = self._get_default_value("infrastructure_defaults.shell.timeout")
+        
+        result = self.execute_shell_command(["which", command], cwd=cwd, env=env, inputdata=inputdata, timeout=timeout)
 
         if result.returncode == 0 and result.stdout:
             return result.stdout.strip()

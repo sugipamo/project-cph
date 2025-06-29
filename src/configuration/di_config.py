@@ -86,9 +86,15 @@ def _create_persistence_driver() -> Any:
     try:
         with open(default_args_path, 'r') as f:
             defaults = json.load(f)
-            db_path = defaults.get("default_arguments", {}).get("persistence_driver", {}).get("db_path", "cph_history.db")
-    except (FileNotFoundError, json.JSONDecodeError):
-        db_path = "cph_history.db"
+            if "default_arguments" not in defaults:
+                raise ValueError("default_arguments not found in configuration file")
+            if "persistence_driver" not in defaults["default_arguments"]:
+                raise ValueError("persistence_driver not found in default_arguments")
+            if "db_path" not in defaults["default_arguments"]["persistence_driver"]:
+                raise ValueError("db_path not found in persistence_driver configuration")
+            db_path = defaults["default_arguments"]["persistence_driver"]["db_path"]
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        raise ValueError(f"Failed to load configuration from {default_args_path}: {e}")
     
     return SQLitePersistenceDriver(db_path)
 

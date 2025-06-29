@@ -62,7 +62,13 @@ class TestShellRequest:
             command="echo test",
             working_directory="/tmp",
             error_converter=error_converter,
-            result_factory=result_factory
+            result_factory=result_factory,
+            name="test_shell",
+            timeout=30.0,
+            environment=None,
+            shell=True,
+            retry_config=None,
+            debug_tag="test"
         )
         
         result = request._execute_core(mock_driver, None)
@@ -94,7 +100,12 @@ class TestShellRequest:
             working_directory="/tmp",
             error_converter=error_converter,
             result_factory=result_factory,
-            retry_config={"max_attempts": 2}
+            name="test_shell",
+            timeout=30.0,
+            environment=None,
+            shell=True,
+            retry_config={"max_attempts": 2},
+            debug_tag="test"
         )
         
         result = request._execute_core(mock_driver, Mock())
