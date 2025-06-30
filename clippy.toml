@@ -16,10 +16,10 @@ trivial-copy-size-limit = 40
 pass-by-value-size-limit = 256
 
 # Maximum allowed cyclomatic complexity
-cyclomatic-complexity-threshold = 25
+# Note: cyclomatic-complexity-threshold is deprecated, use cognitive-complexity-threshold instead
 
 # Whether to warn on TODOs
-warn-on-todo = true
+# Note: warn-on-todo is not a valid clippy configuration field
 
 # Maximum allowed nesting level
 excessive-nesting-threshold = 5
