@@ -1,0 +1,19 @@
+{
+  "system_constants": {
+    "excluded_directories": ["shared", "__common__", "common", "base"],
+    "path_keys": [
+      "contest_current_path",
+      "contest_stock_path", 
+      "contest_template_path",
+      "local_workspace_path"
+    ],
+    "messages": {
+      "test_files_already_moved": "Test files already moved",
+      "no_source_directory": "No source directory",
+      "no_current_work": "No current work to archive",
+      "local_workspace_cleaned": "Cleaned up local workspace test directory",
+      "no_local_workspace_cleanup": "No local workspace to clean up",
+      "empty_local_workspace_created": "Created empty local workspace (no template available)"
+    }
+  }
+}

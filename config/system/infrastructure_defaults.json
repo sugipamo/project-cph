@@ -1,0 +1,35 @@
+{
+  "infrastructure_defaults": {
+    "result": {
+      "path": null,
+      "op": null,
+      "cmd": null,
+      "operation_type": "unknown"
+    },
+    "shell": {
+      "cwd": null,
+      "env": {},
+      "inputdata": null,
+      "timeout": 30
+    },
+    "python": {
+      "cwd": null
+    },
+    "persistence": {
+      "params": []
+    },
+    "docker": {
+      "container_id": null,
+      "image_id": null,
+      "stdout": null,
+      "stderr": null
+    },
+    "file": {
+      "content": null,
+      "exists": null
+    },
+    "unified": {
+      "request_type_name_fallback": "UnknownRequest"
+    }
+  }
+}

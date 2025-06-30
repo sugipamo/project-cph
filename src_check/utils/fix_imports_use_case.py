@@ -3,7 +3,7 @@ from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 import re
 
-from src.domain.models import BrokenImport, Candidate
+from old_src.domain.models import BrokenImport, Candidate
 
 
 @dataclass

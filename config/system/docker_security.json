@@ -1,0 +1,48 @@
+{
+  "docker_security": {
+    "command_wrapper": "bash -c",
+    "invalid_path_chars": ["..", " ", "\\t", "\\n", "\\r"],
+    "known_registries": [
+      "docker.io",
+      "gcr.io", 
+      "registry.hub.docker.com",
+      "quay.io",
+      "ghcr.io"
+    ],
+    "custom_image_prefixes": ["ojtools", "cph_"],
+    "error_patterns": {
+      "daemon_connection": [
+        "cannot connect to the docker daemon",
+        "docker daemon is not running",
+        "connection refused",
+        "docker.sock"
+      ],
+      "image_not_found": [
+        "no such image",
+        "pull access denied",
+        "repository does not exist",
+        "image not found",
+        "manifest unknown"
+      ],
+      "container_conflict": [
+        "container already exists",
+        "container is running",
+        "container not found",
+        "conflict",
+        "name is already in use"
+      ],
+      "network_error": [
+        "network", "timeout", "connection", "dns", "tls"
+      ],
+      "filesystem_error": [
+        "permission denied",
+        "no such file or directory",
+        "directory not empty",
+        "disk space"
+      ],
+      "resource_error": [
+        "out of memory", "resource", "quota", "limit", "no space left"
+      ]
+    }
+  }
+}

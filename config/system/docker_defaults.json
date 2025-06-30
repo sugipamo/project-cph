@@ -1,0 +1,55 @@
+{
+  "docker_defaults": {
+    "docker_workspace_mount_path": "/workspace",
+    "docker_working_directory": "/workspace",
+    "keep_alive_command": "tail -f /dev/null",
+    "default_shell": "bash",
+    "naming_conventions": {
+      "container_prefix": "cph",
+      "oj_container_prefix": "cph_ojtools",
+      "separator": "_",
+      "image_tag_format": "{language}:latest"
+    },
+    "path_settings": {
+      "container_root_path": "/",
+      "host_current_directory": ".",
+      "path_separator": "/",
+      "temp_directory": "/tmp",
+      "local_workspace_alias": "./workspace"
+    },
+    "docker_settings": {
+      "dockerfile_hash_length": 12
+    },
+    "timeout_settings": {
+      "process_termination_timeout": 3
+    },
+    "docker_options": {
+      "force_remove_flag": "f",
+      "detach": false,
+      "interactive": true,
+      "tty": true,
+      "remove": true
+    },
+    "retry_settings": {
+      "max_attempts": 3,
+      "base_delay_seconds": 1.0,
+      "max_delay_seconds": 30.0,
+      "exponential_backoff": true
+    },
+    "state_management": {
+      "state_directory": "~/.cph/state",
+      "state_file_format": "json",
+      "auto_backup": true,
+      "max_history": 100
+    },
+    "fallback_handling": {
+      "default_container_name": "default_container",
+      "default_stdout_value": "",
+      "error_handling": {
+        "retry_attempts": 3,
+        "retry_delay": 1.0,
+        "raise_on_config_error": true
+      }
+    }
+  }
+}

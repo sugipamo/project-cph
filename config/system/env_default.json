@@ -1,0 +1,6 @@
+{
+  "env_default": {
+    "env_type": "local",
+    "force_local_default": false
+  }
+}

@@ -2,9 +2,9 @@ from pathlib import Path
 from typing import List, Dict, Any
 from dataclasses import dataclass
 
-from src.domain.models import BrokenImport
-from src.domain.models.check_result import CheckResult
-from src.domain.services.circular_import_detector import CircularImportDetector
+from old_src.domain.models import BrokenImport
+from old_src.domain.models.check_result import CheckResult
+from old_src.domain.services.circular_import_detector import CircularImportDetector
 from .import_detector import ImportDetector
 
 

@@ -1,0 +1,24 @@
+{
+  "filesystem_config": {
+    "default_paths": {
+      "workspace": "./workspace",
+      "temp": "./temp",
+      "cache": "./.cache"
+    },
+    "path_resolution": {
+      "resolve_relative": true,
+      "create_missing_dirs": false,
+      "validate_permissions": true
+    },
+    "error_handling": {
+      "missing_file_action": "error",
+      "permission_denied_action": "error",
+      "disk_full_action": "error"
+    },
+    "defaults": {
+      "file_mode": "0644",
+      "dir_mode": "0755",
+      "encoding": "utf-8"
+    }
+  }
+}

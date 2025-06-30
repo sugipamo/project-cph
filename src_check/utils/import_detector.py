@@ -3,7 +3,7 @@ import re
 from pathlib import Path
 from typing import List, Set, Optional
 
-from src.domain.models import BrokenImport, ImportType
+from old_src.domain.models import BrokenImport, ImportType
 from .ast_analyzer import ASTAnalyzer, ImportInfo
 
 

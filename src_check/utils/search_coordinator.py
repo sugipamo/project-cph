@@ -5,11 +5,11 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed, Future
 import logging
 
-from src.domain.models import BrokenImport, Candidate
-from src.domain.services.search_strategy import SearchStrategy, SearchResult
-from src.domain.services.symbol_based_strategy import SymbolBasedStrategy
-from src.domain.services.path_based_strategy import PathBasedStrategy
-from src.domain.services.directory_pattern_strategy import DirectoryPatternStrategy
+from old_src.domain.models import BrokenImport, Candidate
+from old_src.domain.services.search_strategy import SearchStrategy, SearchResult
+from old_src.domain.services.symbol_based_strategy import SymbolBasedStrategy
+from old_src.domain.services.path_based_strategy import PathBasedStrategy
+from old_src.domain.services.directory_pattern_strategy import DirectoryPatternStrategy
 
 
 logger = logging.getLogger(__name__)

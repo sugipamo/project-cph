@@ -3,8 +3,8 @@ from pathlib import Path
 from collections import defaultdict
 import logging
 
-from src.domain.models.broken_import import BrokenImport
-from src.domain.models.module_info import ModuleInfo
+from old_src.domain.models.broken_import import BrokenImport
+from old_src.domain.models.module_info import ModuleInfo
 
 
 class CircularImportDetector:
