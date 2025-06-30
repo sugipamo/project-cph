@@ -1,3 +1,6 @@
 pub mod errors;
+pub mod config;
 
-// Domain models will be implemented here
+#[allow(unused_imports)]
+pub use errors::DomainError;
+pub use config::*;

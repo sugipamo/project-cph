@@ -1,9 +1,18 @@
 pub mod mock_drivers;
 
 use anyhow::Result;
+use std::sync::Arc;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use tempfile::TempDir;
+
+/// Create a test file system using a temporary directory
+pub fn create_test_file_system() -> Arc<dyn crate::interfaces::file_system::FileSystem> {
+    use crate::infrastructure::drivers::file_system::LocalFileSystem;
+    
+    // LocalFileSystem uses current directory, so we'll just use it as-is for tests
+    Arc::new(LocalFileSystem::new())
+}
 
 #[derive(Debug)]
 pub struct TestConfig {

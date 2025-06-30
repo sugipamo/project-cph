@@ -1,3 +1,5 @@
 pub mod errors;
+pub mod config_service;
 
-// Application services will be implemented here
+#[allow(unused_imports)]
+pub use config_service::ConfigService;
