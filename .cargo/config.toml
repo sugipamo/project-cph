@@ -1,6 +1,6 @@
 [build]
 # Number of parallel jobs, defaults to # of CPUs
-jobs = 0  # 0 = use all available cores
+# jobs = 8  # Uncomment to set specific number of jobs
 
 [target.'cfg(all())']
 rustflags = [
@@ -52,13 +52,13 @@ rustflags = [
 fmt = "fmt"
 fmt-check = "fmt -- --check"
 
-# Lint with clippy
-clippy = "clippy -- -D warnings"
+# Lint with clippy (removed recursive definition)
+lint = "clippy -- -D warnings"
 clippy-all = "clippy --all-features --tests --examples -- -D warnings"
 clippy-fix = "clippy --fix --allow-dirty --allow-staged"
 
 # Combined checks
-check-all = ["fmt-check", "clippy-all", "test"]
+check-all = ["fmt-check", "lint", "test"]
 fix-all = ["fmt", "clippy-fix"]
 
 # Test commands

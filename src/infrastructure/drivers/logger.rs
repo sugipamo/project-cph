@@ -39,3 +39,22 @@ impl Logger for TracingLogger {
         // Note: In a real implementation, we'd need to update the tracing subscriber
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_tracing_logger_creation() {
+        let logger = TracingLogger::new();
+        // Logger should be created successfully
+        logger.info("Test logger created");
+    }
+
+    #[test]
+    fn test_set_level() {
+        let logger = TracingLogger::new();
+        logger.set_level(LogLevel::Debug);
+        // Level should be updated (though we can't easily verify tracing output in tests)
+    }
+}

@@ -52,3 +52,102 @@ impl FileSystem for LocalFileSystem {
         Ok(paths)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[tokio::test]
+    async fn test_local_file_system_write_and_read() {
+        let temp_dir = TempDir::new().unwrap();
+        let fs = LocalFileSystem::new();
+        let file_path = temp_dir.path().join("test.txt");
+        let content = "Hello, World!";
+
+        // Write file
+        fs.write(&file_path, content).await.unwrap();
+
+        // Read file
+        let read_content = fs.read(&file_path).await.unwrap();
+        assert_eq!(read_content, content);
+    }
+
+    #[tokio::test]
+    async fn test_local_file_system_exists() {
+        let temp_dir = TempDir::new().unwrap();
+        let fs = LocalFileSystem::new();
+        let file_path = temp_dir.path().join("test.txt");
+
+        // File doesn't exist yet
+        assert!(!fs.exists(&file_path).await.unwrap());
+
+        // Create file
+        fs.write(&file_path, "test").await.unwrap();
+
+        // File should exist now
+        assert!(fs.exists(&file_path).await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_local_file_system_create_dir() {
+        let temp_dir = TempDir::new().unwrap();
+        let fs = LocalFileSystem::new();
+        let dir_path = temp_dir.path().join("nested/directory");
+
+        // Create nested directory
+        fs.create_dir(&dir_path).await.unwrap();
+
+        // Directory should exist
+        assert!(fs.exists(&dir_path).await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_local_file_system_remove() {
+        let temp_dir = TempDir::new().unwrap();
+        let fs = LocalFileSystem::new();
+        let file_path = temp_dir.path().join("test.txt");
+
+        // Create and remove file
+        fs.write(&file_path, "test").await.unwrap();
+        assert!(fs.exists(&file_path).await.unwrap());
+        
+        fs.remove(&file_path).await.unwrap();
+        assert!(!fs.exists(&file_path).await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_local_file_system_copy() {
+        let temp_dir = TempDir::new().unwrap();
+        let fs = LocalFileSystem::new();
+        let source = temp_dir.path().join("source.txt");
+        let dest = temp_dir.path().join("dest.txt");
+        let content = "Copy me!";
+
+        // Create source file
+        fs.write(&source, content).await.unwrap();
+
+        // Copy file
+        fs.copy(&source, &dest).await.unwrap();
+
+        // Both files should exist with same content
+        assert!(fs.exists(&source).await.unwrap());
+        assert!(fs.exists(&dest).await.unwrap());
+        assert_eq!(fs.read(&dest).await.unwrap(), content);
+    }
+
+    #[tokio::test]
+    async fn test_local_file_system_list_dir() {
+        let temp_dir = TempDir::new().unwrap();
+        let fs = LocalFileSystem::new();
+
+        // Create some files
+        fs.write(&temp_dir.path().join("file1.txt"), "1").await.unwrap();
+        fs.write(&temp_dir.path().join("file2.txt"), "2").await.unwrap();
+        fs.create_dir(&temp_dir.path().join("subdir")).await.unwrap();
+
+        // List directory
+        let entries = fs.list_dir(temp_dir.path()).await.unwrap();
+        assert_eq!(entries.len(), 3);
+    }
+}

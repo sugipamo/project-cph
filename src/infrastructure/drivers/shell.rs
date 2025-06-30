@@ -43,3 +43,56 @@ impl Shell for SystemShell {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_system_shell_execute_simple_command() {
+        let shell = SystemShell::new();
+        let result = shell.execute("echo 'Hello, World!'", None).await.unwrap();
+        
+        assert_eq!(result.exit_code, 0);
+        assert_eq!(result.stdout.trim(), "Hello, World!");
+        assert_eq!(result.stderr, "");
+    }
+
+    #[tokio::test]
+    async fn test_system_shell_execute_with_cwd() {
+        let shell = SystemShell::new();
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let result = shell.execute("pwd", Some(temp_dir.path())).await.unwrap();
+        
+        assert_eq!(result.exit_code, 0);
+        assert_eq!(result.stdout.trim(), temp_dir.path().to_string_lossy());
+    }
+
+    #[tokio::test]
+    async fn test_system_shell_execute_with_env() {
+        let shell = SystemShell::new();
+        let env = vec![("TEST_VAR".to_string(), "test_value".to_string())];
+        let result = shell.execute_with_env("echo $TEST_VAR", None, &env).await.unwrap();
+        
+        assert_eq!(result.exit_code, 0);
+        assert_eq!(result.stdout.trim(), "test_value");
+    }
+
+    #[tokio::test]
+    async fn test_system_shell_execute_failed_command() {
+        let shell = SystemShell::new();
+        let result = shell.execute("exit 1", None).await.unwrap();
+        
+        assert_eq!(result.exit_code, 1);
+    }
+
+    #[tokio::test]
+    async fn test_system_shell_execute_stderr_output() {
+        let shell = SystemShell::new();
+        let result = shell.execute("echo 'error' >&2", None).await.unwrap();
+        
+        assert_eq!(result.exit_code, 0);
+        assert_eq!(result.stdout, "");
+        assert_eq!(result.stderr.trim(), "error");
+    }
+}
