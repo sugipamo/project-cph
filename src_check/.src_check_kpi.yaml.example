@@ -1,0 +1,35 @@
+# Example KPI configuration file for src_check
+# Copy this to .src_check_kpi.yaml to enable KPI scoring
+
+# Base score (starting point for scoring)
+base_score: 50.0
+
+# Category weights (must sum to 1.0)
+weights:
+  code_quality: 0.25
+  architecture_quality: 0.25
+  test_quality: 0.25
+  security_quality: 0.25
+
+# Target score ranges
+target_min: 30.0
+target_max: 80.0
+
+# Severity impact points (negative values reduce score)
+severity_impacts:
+  critical: -10.0
+  high: -5.0
+  medium: -3.0
+  low: -1.0
+  info: -0.5
+
+# Database configuration
+db_path: ".src_check_kpi.db"
+
+# Performance settings
+enable_caching: true
+cache_ttl: 300  # 5 minutes
+
+# Parallel execution
+enable_parallel: true
+max_workers: null  # null = CPU count

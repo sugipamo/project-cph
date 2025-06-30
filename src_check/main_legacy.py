@@ -16,33 +16,10 @@ from core.dynamic_importer import DynamicImporter
 from core.result_writer import ResultWriter
 from models.check_result import CheckResult, LogLevel
 from comprehensive_import_fixer import ComprehensiveImportFixer
-import argparse
-
-
-def parse_args():
-    """Parse command line arguments."""
-    parser = argparse.ArgumentParser(
-        description="src_check - Python code quality checker with KPI scoring"
-    )
-    parser.add_argument(
-        "--config",
-        "-c",
-        type=str,
-        help="Path to KPI configuration file"
-    )
-    parser.add_argument(
-        "paths",
-        nargs="*",
-        help="Paths to check (default: current directory)"
-    )
-    return parser.parse_args()
 
 
 def main():
     """統合エントリーポイント"""
-    # Parse arguments
-    args = parse_args()
-    
     # 基本パスの設定
     src_check_root = Path(__file__).parent
     project_root = src_check_root.parent  # project-cph
@@ -142,44 +119,12 @@ def main():
                 )
                 results.append(error_result)
         
-        # 4. KPIスコアリング（標準機能）
-        kpi_score = None
-        try:
-            from core.scoring import KPIScoreEngine
-            from models.kpi import KPIConfig
-            from compatibility.converters import ResultConverter
-            
-            # Load KPI configuration
-            kpi_config = KPIConfig()
-            if args.config and Path(args.config).exists():
-                import yaml
-                with open(args.config, "r") as f:
-                    config_data = yaml.safe_load(f)
-                    kpi_config = KPIConfig.from_dict(config_data)
-            
-            # Calculate KPI score
-            engine = KPIScoreEngine(kpi_config)
-            kpi_score = engine.calculate_score(results, str(project_root))
-            
-            # Write KPI results to output directory
-            converter = ResultConverter()
-            kpi_text = converter.kpi_score_to_text_format(kpi_score)
-            kpi_json = converter.kpi_score_to_json_format(kpi_score)
-            
-            with open(output_dir / "kpi_score.txt", "w", encoding="utf-8") as f:
-                f.write(kpi_text)
-            with open(output_dir / "kpi_score.json", "w", encoding="utf-8") as f:
-                f.write(kpi_json)
-                
-        except Exception as e:
-            print(f"⚠️  KPIスコアリングでエラーが発生しました: {str(e)}")
-        
-        # 5. 結果出力
+        # 4. 結果出力
         writer = ResultWriter(output_dir)
         output_files = writer.write_results(results)
         summary_file = writer.create_summary_report(results)
         
-        # 6. 標準出力には深刻なエラーのみ表示
+        # 5. 標準出力には深刻なエラーのみ表示
         has_critical = False
         
         if critical_errors:
@@ -207,38 +152,12 @@ def main():
                             print(f"  {line.strip()}")
                     has_critical = True
         
-        # KPIスコアの表示と評価
-        if kpi_score:
-            print("\n" + "=" * 60)
-            print("📊 KPIスコア評価結果")
-            print("=" * 60)
-            print(f"総合スコア: {kpi_score.total_score:.1f}/100")
-            print(f"  - コード品質:         {kpi_score.code_quality.weighted_score:.1f} ({kpi_score.code_quality.issues_count} 件)")
-            print(f"  - アーキテクチャ品質: {kpi_score.architecture_quality.weighted_score:.1f} ({kpi_score.architecture_quality.issues_count} 件)")
-            print(f"  - テスト品質:         {kpi_score.test_quality.weighted_score:.1f} ({kpi_score.test_quality.issues_count} 件)")
-            print(f"  - セキュリティ品質:   {kpi_score.security_quality.weighted_score:.1f} ({kpi_score.security_quality.issues_count} 件)")
-            
-            # 評価メッセージ
-            if kpi_score.total_score >= 80:
-                print("\n🎉 優秀: コード品質が非常に高いレベルです！")
-            elif kpi_score.total_score >= 70:
-                print("\n✅ 良好: コード品質は良好なレベルです。")
-            elif kpi_score.total_score >= 50:
-                print("\n📈 標準: コード品質は標準的なレベルです。改善の余地があります。")
-            elif kpi_score.total_score >= 30:
-                print("\n⚠️  要改善: コード品質に問題があります。リファクタリングを検討してください。")
-            else:
-                print("\n❌ 危険: コード品質が非常に低いです。早急な対応が必要です。")
-            
-            print(f"\n詳細なKPIレポート: {output_dir}/kpi_score.txt")
-            print(f"JSON形式のレポート: {output_dir}/kpi_score.json")
-        
         if has_critical:
             print(f"\n詳細は {summary_file} を参照してください。")
         else:
             print(f"詳細は {summary_file} を参照してください。")
         
-        # 7. インポート解決（後処理）
+        # 6. インポート解決（後処理）
         print("\n" + "=" * 60)
         print("ステップ3: インポートの事後チェック")
         print("=" * 60)
