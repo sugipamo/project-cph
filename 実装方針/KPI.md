@@ -59,7 +59,7 @@ src_checkをプロジェクトの品質指標（KPI）として機能させ、�
 ## 3. テスト容易性の詳細評価
 
 ### 3.1 評価基準
-```python
+```rust
 def calculate_testability_score(function_ast):
     score = 50  # 基準点
     
