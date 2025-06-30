@@ -1,0 +1,47 @@
+[package]
+name = "cph"
+version = "0.1.0"
+edition = "2021"
+authors = ["CPH Team"]
+description = "Competitive Programming Helper"
+repository = "https://github.com/yourusername/cph"
+license = "MIT"
+readme = "README.md"
+
+[dependencies]
+
+[dev-dependencies]
+# Testing
+mockall = "0.12"
+pretty_assertions = "1.4"
+test-case = "3.3"
+
+# Benchmarking
+criterion = { version = "0.5", features = ["html_reports"] }
+
+# Property-based testing
+proptest = "1.4"
+
+[[bench]]
+name = "benchmarks"
+harness = false
+
+[profile.dev]
+opt-level = 0
+debug = true
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[profile.test]
+opt-level = 0
+debug = true
+
+[profile.bench]
+opt-level = 3
+lto = true
+codegen-units = 1

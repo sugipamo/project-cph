@@ -1,0 +1,68 @@
+# rustfmt configuration file
+# https://rust-lang.github.io/rustfmt/
+
+# Maximum width of each line
+max_width = 100
+
+# Use tab characters for indentation instead of spaces
+hard_tabs = false
+
+# Number of spaces per tab
+tab_spaces = 4
+
+# Use Unix line endings
+newline_style = "Unix"
+
+# Use verbose diffs in warnings
+verbose = true
+
+# How many lines of the file to format
+edition = "2021"
+
+# Put empty-body functions and impls on a single line
+empty_item_single_line = true
+
+# Format string literals where necessary
+format_strings = true
+
+# Put single-expression functions on a single line
+fn_single_line = false
+
+# Force multiline closure bodies to be wrapped in a block
+force_multiline_blocks = true
+
+# Merge multiple imports into a single nested import
+imports_granularity = "Crate"
+
+# How imports should be grouped
+group_imports = "StdExternalCrate"
+
+# Put a trailing comma after a block based match arm
+match_block_trailing_comma = true
+
+# Normalize comments
+normalize_comments = true
+
+# Reorder impl items
+reorder_impl_items = true
+
+# Use field initialize shorthand if possible
+use_field_init_shorthand = true
+
+# Use "try!" instead of "?"
+use_try_shorthand = true
+
+# Force where clauses to be on a new line
+where_single_line = false
+
+# Wrap comments at max_width
+wrap_comments = true
+
+# Format code in doc comments
+format_code_in_doc_comments = true
+
+# Remove nested parens
+remove_nested_parens = true
+
+# Convert #[doc = "..."] to /// ...
+normalize_doc_attributes = true

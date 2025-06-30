@@ -1,0 +1,83 @@
+[build]
+# Number of parallel jobs, defaults to # of CPUs
+jobs = 0  # 0 = use all available cores
+
+[target.'cfg(all())']
+rustflags = [
+    # Enable all Clippy lints
+    "-W", "clippy::all",
+    # Enable pedantic lints
+    "-W", "clippy::pedantic",
+    # Enable nursery lints (experimental)
+    "-W", "clippy::nursery",
+    # Enable cargo lints
+    "-W", "clippy::cargo",
+    
+    # Disable some overly strict lints
+    "-A", "clippy::module_name_repetitions",
+    "-A", "clippy::must_use_candidate",
+    "-A", "clippy::missing_errors_doc",
+    "-A", "clippy::missing_panics_doc",
+    "-A", "clippy::too_many_lines",
+    
+    # Security and correctness
+    "-D", "clippy::unwrap_used",
+    "-D", "clippy::expect_used",
+    "-D", "clippy::panic",
+    "-D", "clippy::unimplemented",
+    "-D", "clippy::todo",
+    
+    # Performance
+    "-W", "clippy::inefficient_to_string",
+    "-W", "clippy::large_types_passed_by_value",
+    
+    # Style
+    "-W", "clippy::use_self",
+    "-W", "clippy::needless_return",
+    "-W", "clippy::redundant_closure_for_method_calls",
+    
+    # Correctness
+    "-D", "clippy::float_cmp",
+    "-D", "clippy::mem_forget",
+    
+    # Compiler lints
+    "-D", "warnings",
+    "-D", "rust-2018-idioms",
+    "-D", "future-incompatible",
+]
+
+# Alias for common commands
+[alias]
+# Format code
+fmt = "fmt"
+fmt-check = "fmt -- --check"
+
+# Lint with clippy
+clippy = "clippy -- -D warnings"
+clippy-all = "clippy --all-features --tests --examples -- -D warnings"
+clippy-fix = "clippy --fix --allow-dirty --allow-staged"
+
+# Combined checks
+check-all = ["fmt-check", "clippy-all", "test"]
+fix-all = ["fmt", "clippy-fix"]
+
+# Test commands
+test-all = "test --all-features"
+test-doc = "test --doc"
+
+# Build commands  
+build-release = "build --release"
+build-all = "build --all-features"
+
+# Documentation
+doc-open = "doc --open --no-deps"
+doc-all = "doc --all-features --no-deps"
+
+# Security audit
+audit = "audit"
+
+# Update dependencies
+update = "update"
+
+# Clean build artifacts
+clean-all = ["clean", "clean --release"]
