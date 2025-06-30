@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
-use anyhow::Result;
+use anyhow::{Context, Result}; 
+use cph::errors::CphError;
 use clap::{Parser, Subcommand};
 // use std::sync::Arc; // Will be used when we implement dependency injection
 
@@ -71,29 +72,47 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     // Initialize dependency container
-    let _container = AppContainer::new()?;
+    let _container = AppContainer::new()
+        .context("Failed to initialize application container")?;
 
-    // Handle commands
-    match cli.command {
+    // Handle commands with proper error handling
+    let result: Result<()> = match cli.command {
         Commands::Open { name, url } => {
             tracing::info!("Opening problem: {}", name);
             if let Some(url) = url {
                 tracing::info!("URL: {}", url);
             }
             // TODO: Implement open command
+            Ok(())
         }
         Commands::Submit { problem, file: _ } => {
             tracing::info!("Submitting solution for problem: {}", problem);
             // TODO: Implement submit command
+            Ok(())
         }
         Commands::Test { problem } => {
             tracing::info!("Running tests for problem: {}", problem);
             // TODO: Implement test command
+            Ok(())
         }
         Commands::Init => {
             tracing::info!("Initializing workspace");
             // TODO: Implement init command
+            Ok(())
         }
+    };
+
+    // Handle errors with user-friendly messages
+    if let Err(e) = result {
+        if let Some(cph_error) = e.downcast_ref::<CphError>() {
+            eprintln!("Error: {}", cph_error.to_user_message());
+            if let Some(action) = cph_error.suggested_action() {
+                eprintln!("Suggestion: {}", action);
+            }
+        } else {
+            eprintln!("Error: {}", e);
+        }
+        std::process::exit(1);
     }
 
     Ok(())
