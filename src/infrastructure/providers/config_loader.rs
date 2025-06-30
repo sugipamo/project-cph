@@ -196,8 +196,8 @@ mod tests {
         fs.write(&config_path, &json).await.unwrap();
 
         // Load the configuration
-        let loaded = loader.load_language_config("rust").unwrap();
-        assert_eq!(loaded.language.language_id, test_config.language.language_id);
+        let loaded_config = loader.load_language_config("rust").unwrap();
+        assert_eq!(loaded_config.language.language_id, test_config.language.language_id);
     }
 
     #[test]
@@ -209,7 +209,7 @@ mod tests {
         
         loader.set_config("test", config.clone()).unwrap();
         
-        let loaded = loader.load_language_config("test").unwrap();
-        assert_eq!(loaded.language.language_id, "test-lang");
+        let loaded_config = loader.load_language_config("test").unwrap();
+        assert_eq!(loaded_config.language.language_id, "test-lang");
     }
 }

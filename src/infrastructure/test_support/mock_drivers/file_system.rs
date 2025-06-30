@@ -3,6 +3,8 @@ use anyhow::Result;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
+#[allow(clippy::unused_async)]
+
 #[derive(Default)]
 pub struct MockFileSystem {
     files: HashMap<PathBuf, String>,

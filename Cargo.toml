@@ -7,6 +7,8 @@ description = "Competitive Programming Helper"
 repository = "https://github.com/yourusername/cph"
 license = "MIT"
 readme = "README.md"
+keywords = ["competitive-programming", "helper", "cli", "testing", "automation"]
+categories = ["command-line-utilities", "development-tools"]
 
 [lib]
 name = "cph"

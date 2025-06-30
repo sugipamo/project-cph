@@ -35,7 +35,14 @@ impl Logger for TracingLogger {
     }
 
     fn set_level(&self, level: LogLevel) {
-        *self.level.lock().unwrap() = level;
+        match self.level.lock() {
+            Ok(mut guard) => *guard = level,
+            Err(poisoned) => {
+                // If the mutex is poisoned, we can still recover by ignoring the poison
+                let mut guard = poisoned.into_inner();
+                *guard = level;
+            }
+        }
         // Note: In a real implementation, we'd need to update the tracing subscriber
     }
 }

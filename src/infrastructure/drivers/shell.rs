@@ -23,18 +23,18 @@ impl Shell for SystemShell {
         cwd: Option<&Path>,
         env: &[(String, String)],
     ) -> Result<CommandOutput> {
-        let mut cmd = Command::new("sh");
-        cmd.arg("-c").arg(command);
+        let mut process = Command::new("sh");
+        process.arg("-c").arg(command);
 
         if let Some(cwd) = cwd {
-            cmd.current_dir(cwd);
+            process.current_dir(cwd);
         }
 
         for (key, value) in env {
-            cmd.env(key, value);
+            process.env(key, value);
         }
 
-        let output = cmd.output().await?;
+        let output = process.output().await?;
 
         Ok(CommandOutput {
             stdout: String::from_utf8_lossy(&output.stdout).to_string(),
