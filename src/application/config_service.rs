@@ -40,15 +40,15 @@ impl ConfigService {
 
         // Load system configuration
         let system_config = self.loader.load_system_config()
-            .map_err(|e| ApplicationError::from(e))?;
+            .map_err(ApplicationError::from)?;
 
         // Load shared configuration
         let shared_config = self.loader.load_shared_config()
-            .map_err(|e| ApplicationError::from(e))?;
+            .map_err(ApplicationError::from)?;
 
         // Load language-specific configuration
         let language_config = self.loader.load_language_config(language)
-            .map_err(|e| ApplicationError::from(e))?;
+            .map_err(ApplicationError::from)?;
 
         // Merge configurations with priority: language > shared > system
         let merged_config = self.merge_configs(vec![system_config, shared_config, language_config])?;
