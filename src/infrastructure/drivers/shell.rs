@@ -1,7 +1,9 @@
 use crate::interfaces::shell::{Shell, CommandOutput};
 use anyhow::Result;
 use std::path::Path;
+use std::process::Stdio;
 use tokio::process::Command;
+use tokio::io::AsyncWriteExt;
 
 pub struct SystemShell;
 
@@ -13,7 +15,11 @@ impl SystemShell {
 
 #[async_trait::async_trait]
 impl Shell for SystemShell {
-    async fn execute(&self, command: &str, cwd: Option<&Path>) -> Result<CommandOutput> {
+    async fn execute(&self, command: &str) -> Result<CommandOutput> {
+        self.execute_with_cwd(command, None).await
+    }
+
+    async fn execute_with_cwd(&self, command: &str, cwd: Option<&Path>) -> Result<CommandOutput> {
         self.execute_with_env(command, cwd, &[]).await
     }
 
@@ -40,6 +46,61 @@ impl Shell for SystemShell {
             stdout: String::from_utf8_lossy(&output.stdout).to_string(),
             stderr: String::from_utf8_lossy(&output.stderr).to_string(),
             exit_code: output.status.code().unwrap_or(-1),
+            status: output.status,
+        })
+    }
+
+    async fn execute_with_input(&self, command: &str, input: &str) -> Result<CommandOutput> {
+        let mut process = Command::new("sh");
+        process.arg("-c")
+            .arg(command)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+
+        let mut child = process.spawn()?;
+        
+        if let Some(mut stdin) = child.stdin.take() {
+            stdin.write_all(input.as_bytes()).await?;
+            stdin.shutdown().await?;
+        }
+        
+        let output = child.wait_with_output().await?;
+
+        Ok(CommandOutput {
+            stdout: String::from_utf8_lossy(&output.stdout).to_string(),
+            stderr: String::from_utf8_lossy(&output.stderr).to_string(),
+            exit_code: output.status.code().unwrap_or(-1),
+            status: output.status,
+        })
+    }
+    
+    async fn execute_with_input_and_cwd(&self, command: &str, input: &str, cwd: Option<&Path>) -> Result<CommandOutput> {
+        let mut process = Command::new("sh");
+        process.arg("-c")
+            .arg(command)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+
+        if let Some(cwd_path) = cwd {
+            process.current_dir(cwd_path);
+        }
+
+        let mut child = process.spawn()?;
+        
+        if let Some(mut stdin) = child.stdin.take() {
+            stdin.write_all(input.as_bytes()).await?;
+            stdin.shutdown().await?;
+        }
+        
+        let output = child.wait_with_output().await?;
+
+        Ok(CommandOutput {
+            stdout: String::from_utf8_lossy(&output.stdout).to_string(),
+            stderr: String::from_utf8_lossy(&output.stderr).to_string(),
+            exit_code: output.status.code().unwrap_or(-1),
+            status: output.status,
         })
     }
 }
@@ -51,7 +112,7 @@ mod tests {
     #[tokio::test]
     async fn test_system_shell_execute_simple_command() {
         let shell = SystemShell::new();
-        let result = shell.execute("echo 'Hello, World!'", None).await.unwrap();
+        let result = shell.execute("echo 'Hello, World!'").await.unwrap();
         
         assert_eq!(result.exit_code, 0);
         assert_eq!(result.stdout.trim(), "Hello, World!");
@@ -62,7 +123,7 @@ mod tests {
     async fn test_system_shell_execute_with_cwd() {
         let shell = SystemShell::new();
         let temp_dir = tempfile::TempDir::new().unwrap();
-        let result = shell.execute("pwd", Some(temp_dir.path())).await.unwrap();
+        let result = shell.execute_with_cwd("pwd", Some(temp_dir.path())).await.unwrap();
         
         assert_eq!(result.exit_code, 0);
         assert_eq!(result.stdout.trim(), temp_dir.path().to_string_lossy());
@@ -81,7 +142,7 @@ mod tests {
     #[tokio::test]
     async fn test_system_shell_execute_failed_command() {
         let shell = SystemShell::new();
-        let result = shell.execute("exit 1", None).await.unwrap();
+        let result = shell.execute("exit 1").await.unwrap();
         
         assert_eq!(result.exit_code, 1);
     }
@@ -89,7 +150,7 @@ mod tests {
     #[tokio::test]
     async fn test_system_shell_execute_stderr_output() {
         let shell = SystemShell::new();
-        let result = shell.execute("echo 'error' >&2", None).await.unwrap();
+        let result = shell.execute("echo 'error' >&2").await.unwrap();
         
         assert_eq!(result.exit_code, 0);
         assert_eq!(result.stdout, "");

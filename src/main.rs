@@ -1,14 +1,21 @@
 #![allow(dead_code)]
 
 use anyhow::{Context, Result}; 
-use cph::errors::CphError;
 use clap::{Parser, Subcommand};
-// use std::sync::Arc; // Will be used when we implement dependency injection
+use std::sync::Arc;
+use std::path::PathBuf;
 
 mod interfaces;
 mod infrastructure;
 mod application;
 mod domain;
+mod errors;
+
+use application::TestService;
+use infrastructure::drivers::{file_system::LocalFileSystem, shell::SystemShell, test_runner::LocalTestRunner};
+use interfaces::file_system::FileSystem;
+use interfaces::shell::Shell;
+use interfaces::test_runner::TestRunner;
 
 #[derive(Parser)]
 #[command(name = "cph")]
@@ -39,25 +46,33 @@ enum Commands {
     },
     /// Run tests for a problem
     Test {
-        /// The problem name
-        problem: String,
+        /// The problem directory path (optional, defaults to current directory)
+        path: Option<PathBuf>,
     },
     /// Initialize a new workspace
     Init,
 }
 
 struct AppContainer {
-    // Infrastructure dependencies will be injected here
-    // file_system: Arc<dyn interfaces::file_system::FileSystem>,
-    // shell: Arc<dyn interfaces::shell::Shell>,
-    // logger: Arc<dyn interfaces::logger::Logger>,
-    // config: Arc<dyn interfaces::config::ConfigProvider>,
+    file_system: Arc<dyn FileSystem>,
+    shell: Arc<dyn Shell>,
+    test_runner: Arc<dyn TestRunner>,
+    test_service: Arc<TestService>,
 }
 
 impl AppContainer {
     fn new() -> Result<Self> {
-        // TODO: Initialize infrastructure components
-        Ok(Self {})
+        let file_system: Arc<dyn FileSystem> = Arc::new(LocalFileSystem::new());
+        let shell: Arc<dyn Shell> = Arc::new(SystemShell::new());
+        let test_runner: Arc<dyn TestRunner> = Arc::new(LocalTestRunner::new(shell.clone()));
+        let test_service = Arc::new(TestService::new(file_system.clone(), test_runner.clone()));
+        
+        Ok(Self {
+            file_system,
+            shell,
+            test_runner,
+            test_service,
+        })
     }
 }
 
@@ -72,7 +87,7 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     // Initialize dependency container
-    let _container = AppContainer::new()
+    let container = AppContainer::new()
         .context("Failed to initialize application container")?;
 
     // Handle commands with proper error handling
@@ -90,9 +105,42 @@ async fn main() -> Result<()> {
             // TODO: Implement submit command
             Ok(())
         }
-        Commands::Test { problem } => {
-            tracing::info!("Running tests for problem: {}", problem);
-            // TODO: Implement test command
+        Commands::Test { path } => {
+            tracing::info!("Running tests for problem in: {:?}", path.as_ref().unwrap_or(&PathBuf::from(".")));
+            
+            let results = container.test_service.run_tests(path).await?;
+            
+            // Display results
+            for result in &results {
+                match &result.status {
+                    domain::test_case::TestStatus::Passed => {
+                        println!("✓ Test '{}' passed ({}ms)", result.test_case.name, result.execution_time_ms);
+                    }
+                    domain::test_case::TestStatus::Failed { reason } => {
+                        println!("✗ Test '{}' failed ({}ms)", result.test_case.name, result.execution_time_ms);
+                        println!("  {}", reason);
+                    }
+                    domain::test_case::TestStatus::RuntimeError { message } => {
+                        println!("✗ Test '{}' runtime error: {}", result.test_case.name, message);
+                    }
+                    domain::test_case::TestStatus::CompilationError { message } => {
+                        println!("✗ Compilation error: {}", message);
+                        break;
+                    }
+                    domain::test_case::TestStatus::TimeLimitExceeded => {
+                        println!("✗ Test '{}' time limit exceeded", result.test_case.name);
+                    }
+                }
+            }
+            
+            let passed = results.iter().filter(|r| matches!(r.status, domain::test_case::TestStatus::Passed)).count();
+            let total = results.len();
+            println!("\nPassed {}/{} tests", passed, total);
+            
+            if passed < total {
+                return Err(anyhow::anyhow!("Some tests failed"));
+            }
+            
             Ok(())
         }
         Commands::Init => {
@@ -104,14 +152,7 @@ async fn main() -> Result<()> {
 
     // Handle errors with user-friendly messages
     if let Err(e) = result {
-        if let Some(cph_error) = e.downcast_ref::<CphError>() {
-            eprintln!("Error: {}", cph_error.to_user_message());
-            if let Some(action) = cph_error.suggested_action() {
-                eprintln!("Suggestion: {}", action);
-            }
-        } else {
-            eprintln!("Error: {}", e);
-        }
+        eprintln!("Error: {}", e);
         std::process::exit(1);
     }
 

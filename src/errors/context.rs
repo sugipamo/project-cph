@@ -1,6 +1,7 @@
 use std::fmt::Display;
 
 /// Extension trait for adding context to errors
+#[allow(dead_code)]
 pub trait ErrorContext<T> {
     /// Add context to the error
     fn context<C>(self, context: C) -> Result<T, anyhow::Error>

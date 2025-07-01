@@ -5,5 +5,6 @@ pub mod persistence;
 pub mod config;
 pub mod logger;
 pub mod config_loader;
+pub mod test_runner;
 
 pub use config_loader::ConfigLoader;

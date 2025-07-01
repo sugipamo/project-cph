@@ -1,6 +1,7 @@
 mod context;
+mod app_error;
 
-pub use context::ErrorContext;
+pub use app_error::{AppError, AppResult};
 
 use thiserror::Error;
 use crate::application::errors::ApplicationError;

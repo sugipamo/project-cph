@@ -20,7 +20,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_mock_shell() {
-        let mut shell = MockShell::new()
+        let shell = MockShell::new()
             .with_response("echo hello", CommandResponse::success("hello\n"))
             .with_response("exit 1", CommandResponse::failure("Error", 1));
 
