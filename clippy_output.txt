@@ -1,0 +1,1709 @@
+   Compiling ring v0.17.14
+   Compiling rustls v0.23.28
+    Checking rustls-webpki v0.103.3
+    Checking sqlx-core v0.8.6
+    Checking sqlx-sqlite v0.8.6
+   Compiling sqlx-macros-core v0.8.6
+   Compiling sqlx-macros v0.8.6
+    Checking sqlx v0.8.6
+    Checking cph v0.1.0 (/home/cphelper/project-cph/rust)
+error: multiple versions for dependency `base64`: 0.21.7, 0.22.1
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#multiple_crate_versions
+  = note: `-D clippy::multiple-crate-versions` implied by `-D warnings`
+  = help: to override `-D warnings` add `#[allow(clippy::multiple_crate_versions)]`
+
+error: multiple versions for dependency `getrandom`: 0.2.16, 0.3.3
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#multiple_crate_versions
+
+error: multiple versions for dependency `hashbrown`: 0.12.3, 0.14.5, 0.15.4
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#multiple_crate_versions
+
+error: multiple versions for dependency `hashlink`: 0.8.4, 0.10.0
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#multiple_crate_versions
+
+error: multiple versions for dependency `indexmap`: 1.9.3, 2.10.0
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#multiple_crate_versions
+
+error: multiple versions for dependency `regex-automata`: 0.1.10, 0.4.9
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#multiple_crate_versions
+
+error: multiple versions for dependency `regex-syntax`: 0.6.29, 0.8.5
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#multiple_crate_versions
+
+error: multiple versions for dependency `schemars`: 0.9.0, 1.0.3
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#multiple_crate_versions
+
+error: multiple versions for dependency `thiserror`: 1.0.69, 2.0.12
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#multiple_crate_versions
+
+error: multiple versions for dependency `thiserror-impl`: 1.0.69, 2.0.12
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#multiple_crate_versions
+
+error: multiple versions for dependency `wasi`: 0.11.1+wasi-snapshot-preview1, 0.14.2+wasi-0.2.4
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#multiple_crate_versions
+
+error: multiple versions for dependency `webpki-roots`: 0.26.11, 1.0.1
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#multiple_crate_versions
+
+error: multiple versions for dependency `windows-sys`: 0.48.0, 0.52.0, 0.59.0, 0.60.2
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#multiple_crate_versions
+
+error: multiple versions for dependency `windows-targets`: 0.48.5, 0.52.6, 0.53.2
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#multiple_crate_versions
+
+error: multiple versions for dependency `windows_aarch64_gnullvm`: 0.48.5, 0.52.6, 0.53.0
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#multiple_crate_versions
+
+error: multiple versions for dependency `windows_aarch64_msvc`: 0.48.5, 0.52.6, 0.53.0
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#multiple_crate_versions
+
+error: multiple versions for dependency `windows_i686_gnu`: 0.48.5, 0.52.6, 0.53.0
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#multiple_crate_versions
+
+error: multiple versions for dependency `windows_i686_gnullvm`: 0.52.6, 0.53.0
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#multiple_crate_versions
+
+error: multiple versions for dependency `windows_i686_msvc`: 0.48.5, 0.52.6, 0.53.0
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#multiple_crate_versions
+
+error: multiple versions for dependency `windows_x86_64_gnu`: 0.48.5, 0.52.6, 0.53.0
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#multiple_crate_versions
+
+error: multiple versions for dependency `windows_x86_64_gnullvm`: 0.48.5, 0.52.6, 0.53.0
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#multiple_crate_versions
+
+error: multiple versions for dependency `windows_x86_64_msvc`: 0.48.5, 0.52.6, 0.53.0
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#multiple_crate_versions
+
+error: unused `self` argument
+   --> src/application/config_service.rs:140:22
+    |
+140 |     fn merge_configs(&self, configs: Vec<Config>) -> Result<Config, ApplicationError> {
+    |                      ^^^^^
+    |
+    = help: consider refactoring to an associated function
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unused_self
+    = note: `-D clippy::unused-self` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::unused_self)]`
+
+error: this function's return value is unnecessarily wrapped by `Result`
+   --> src/application/config_service.rs:140:5
+    |
+140 | /     fn merge_configs(&self, configs: Vec<Config>) -> Result<Config, ApplicationError> {
+141 | |         if configs.is_empty() {
+142 | |             return Ok(Config::default());
+...   |
+154 | |         Ok(result)
+155 | |     }
+    | |_____^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_wraps
+    = note: `-D clippy::unnecessary-wraps` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_wraps)]`
+help: remove `Result` from the return type...
+    |
+140 -     fn merge_configs(&self, configs: Vec<Config>) -> Result<Config, ApplicationError> {
+140 +     fn merge_configs(&self, configs: Vec<Config>) -> domain::config::Config {
+    |
+help: ...and then change returning expressions
+    |
+142 ~             return Config::default();
+143 |         }
+...
+153 |         
+154 ~         result
+    |
+
+error: this argument is passed by value, but not consumed in the function body
+   --> src/application/config_service.rs:158:41
+    |
+158 |     fn build_config_node(&self, config: Config) -> Result<ConfigNode, ApplicationError> {
+    |                                         ^^^^^^ help: consider taking a reference instead: `&Config`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#needless_pass_by_value
+    = note: `-D clippy::needless-pass-by-value` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::needless_pass_by_value)]`
+
+error: use Option::map_or_else instead of an if let/else
+   --> src/application/config_service.rs:223:17
+    |
+223 | /                 if let Some(i) = n.as_i64() {
+224 | |                     Ok(ConfigValue::Integer(i))
+225 | |                 } else if let Some(f) = n.as_f64() {
+226 | |                     Ok(ConfigValue::Float(f))
+227 | |                 } else {
+228 | |                     Err(ApplicationError::InvalidInput("Invalid number value".to_string()))
+229 | |                 }
+    | |_________________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#option_if_let_else
+    = note: `-D clippy::option-if-let-else` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::option_if_let_else)]`
+help: try
+    |
+223 ~                 n.as_i64().map_or_else(|| if let Some(f) = n.as_f64() {
+224 +                     Ok(ConfigValue::Float(f))
+225 +                 } else {
+226 +                     Err(ApplicationError::InvalidInput("Invalid number value".to_string()))
+227 +                 }, |i| Ok(ConfigValue::Integer(i)))
+    |
+
+error: parameter is only used in recursion
+   --> src/application/config_service.rs:219:30
+    |
+219 |     fn json_to_config_value(&self, value: serde_json::Value) -> Result<ConfigValue, ApplicationError> {
+    |                              ^^^^
+    |
+note: parameter used here
+   --> src/application/config_service.rs:235:37
+    |
+235 |                     config_arr.push(self.json_to_config_value(item)?);
+    |                                     ^^^^
+...
+242 |                     config_map.insert(k, self.json_to_config_value(v)?);
+    |                                          ^^^^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#only_used_in_recursion
+    = note: `-D clippy::only-used-in-recursion` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::only_used_in_recursion)]`
+
+error: this function's return value is unnecessarily wrapped by `Option`
+   --> src/application/config_service.rs:251:5
+    |
+251 | /     fn expand_value(&self, value: &ConfigValue, context: &ConfigContext) -> Option<ConfigValue> {
+252 | |         match value {
+253 | |             ConfigValue::String(s) => Some(ConfigValue::String(context.expand(s))),
+254 | |             ConfigValue::Array(arr) => {
+...   |
+271 | |     }
+    | |_____^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_wraps
+help: remove `Option` from the return type...
+    |
+251 -     fn expand_value(&self, value: &ConfigValue, context: &ConfigContext) -> Option<ConfigValue> {
+251 +     fn expand_value(&self, value: &ConfigValue, context: &ConfigContext) -> domain::config::ConfigValue {
+    |
+help: ...and then change returning expressions
+    |
+253 ~             ConfigValue::String(s) => ConfigValue::String(context.expand(s)),
+254 |             ConfigValue::Array(arr) => {
+...
+257 |                     .collect();
+258 ~                 ConfigValue::Array(expanded)
+259 |             }
+...
+266 |                 }
+267 ~                 ConfigValue::Object(expanded)
+268 |             }
+269 ~             _ => value.clone(),
+    |
+
+error: parameter is only used in recursion
+   --> src/application/config_service.rs:251:22
+    |
+251 |     fn expand_value(&self, value: &ConfigValue, context: &ConfigContext) -> Option<ConfigValue> {
+    |                      ^^^^
+    |
+note: parameter used here
+   --> src/application/config_service.rs:256:37
+    |
+256 |                     .filter_map(|v| self.expand_value(v, context))
+    |                                     ^^^^
+...
+263 |                     if let Some(expanded_value) = self.expand_value(v, context) {
+    |                                                   ^^^^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#only_used_in_recursion
+
+error: variables can be used directly in the `format!` string
+  --> src/application/open_service.rs:36:13
+   |
+36 |             eprintln!("URL: {}", url);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+   = note: `-D clippy::uninlined-format-args` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::uninlined_format_args)]`
+help: change this to
+   |
+36 -             eprintln!("URL: {}", url);
+36 +             eprintln!("URL: {url}");
+   |
+
+error: variables can be used directly in the `format!` string
+  --> src/application/open_service.rs:37:13
+   |
+37 |             eprintln!("\n手動でテストケースをダウンロードして、{}/sample/に配置してください。", name);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+   |
+37 -             eprintln!("\n手動でテストケースをダウンロードして、{}/sample/に配置してください。", name);
+37 +             eprintln!("\n手動でテストケースをダウンロードして、{name}/sample/に配置してください。");
+   |
+
+error: variables can be used directly in the `format!` string
+  --> src/application/open_service.rs:41:9
+   |
+41 |         println!("✓ 問題 '{}' のディレクトリを作成しました", name);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+   |
+41 -         println!("✓ 問題 '{}' のディレクトリを作成しました", name);
+41 +         println!("✓ 問題 '{name}' のディレクトリを作成しました");
+   |
+
+error: variables can be used directly in the `format!` string
+  --> src/application/open_service.rs:42:9
+   |
+42 |         println!("✓ テンプレートファイルを作成しました: {}/main.rs", name);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+   |
+42 -         println!("✓ テンプレートファイルを作成しました: {}/main.rs", name);
+42 +         println!("✓ テンプレートファイルを作成しました: {name}/main.rs");
+   |
+
+error: variables can be used directly in the `format!` string
+  --> src/application/open_service.rs:43:9
+   |
+43 |         println!("✓ サンプルディレクトリを作成しました: {}/sample/", name);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+   |
+43 -         println!("✓ サンプルディレクトリを作成しました: {}/sample/", name);
+43 +         println!("✓ サンプルディレクトリを作成しました: {name}/sample/");
+   |
+
+error: variables can be used directly in the `format!` string
+  --> src/application/open_service.rs:45:9
+   |
+45 |         println!("  cd {}", name);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+   |
+45 -         println!("  cd {}", name);
+45 +         println!("  cd {name}");
+   |
+
+error: use Option::map_or_else instead of an if let/else
+  --> src/application/submit_service.rs:34:27
+   |
+34 |           let submit_file = match file {
+   |  ___________________________^
+35 | |             Some(f) => PathBuf::from(f),
+36 | |             None => problem_dir.join("main.rs"),
+37 | |         };
+   | |_________^ help: try: `file.map_or_else(|| problem_dir.join("main.rs"), |f| PathBuf::from(f))`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#option_if_let_else
+
+error: unnecessary structure name repetition
+  --> src/domain/config.rs:43:76
+   |
+43 |         let child = self.children.entry(key.to_string()).or_insert_with(|| ConfigNode::new(key.to_string()));
+   |                                                                            ^^^^^^^^^^ help: use the applicable keyword: `Self`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#use_self
+   = note: `-D clippy::use-self` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::use_self)]`
+
+error: used `unwrap()` on a `Result` value
+   --> src/application/config_service.rs:285:23
+    |
+285 |         let config1 = service.load_config("rust").unwrap();
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+    = note: requested on the command line with `-D clippy::unwrap-used`
+
+error: used `unwrap()` on a `Result` value
+   --> src/application/config_service.rs:288:23
+    |
+288 |         let config2 = service.load_config("rust").unwrap();
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: you should consider adding a `Default` implementation for `ConfigContext`
+   --> src/domain/config.rs:185:5
+    |
+185 | /     pub fn new() -> Self {
+186 | |         Self {
+187 | |             contest_name: None,
+188 | |             problem_name: None,
+...   |
+192 | |     }
+    | |_____^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#new_without_default
+    = note: `-D clippy::new-without-default` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::new_without_default)]`
+help: try adding this
+    |
+184 + impl Default for ConfigContext {
+185 +     fn default() -> Self {
+186 +         Self::new()
+187 +     }
+188 + }
+    |
+
+error: this looks like a formatting argument but it is not part of a formatting macro
+   --> src/domain/config.rs:207:38
+    |
+207 |             result = result.replace("{language}", language);
+    |                                      ^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#literal_string_with_formatting_args
+    = note: `-D clippy::literal-string-with-formatting-args` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::literal_string_with_formatting_args)]`
+
+error: you are deriving `PartialEq` and can implement `Eq`
+ --> src/domain/test_case.rs:3:24
+  |
+3 | #[derive(Debug, Clone, PartialEq)]
+  |                        ^^^^^^^^^ help: consider deriving `Eq` as well: `PartialEq, Eq`
+  |
+  = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#derive_partial_eq_without_eq
+  = note: `-D clippy::derive-partial-eq-without-eq` implied by `-D warnings`
+  = help: to override `-D warnings` add `#[allow(clippy::derive_partial_eq_without_eq)]`
+
+error: you are deriving `PartialEq` and can implement `Eq`
+  --> src/domain/test_case.rs:18:24
+   |
+18 | #[derive(Debug, Clone, PartialEq)]
+   |                        ^^^^^^^^^ help: consider deriving `Eq` as well: `PartialEq, Eq`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#derive_partial_eq_without_eq
+
+error: this could be a `const fn`
+  --> src/domain/test_case.rs:34:5
+   |
+34 | /     pub fn new(path: PathBuf) -> Self {
+35 | |         Self {
+36 | |             path,
+37 | |             sample_tests: Vec::new(),
+38 | |         }
+39 | |     }
+   | |_____^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_const_for_fn
+   = note: `-D clippy::missing-const-for-fn` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::missing_const_for_fn)]`
+help: make the function `const`
+   |
+34 |     pub const fn new(path: PathBuf) -> Self {
+   |         +++++
+
+error: unnecessary structure name repetition
+  --> src/errors/app_error.rs:25:9
+   |
+25 |         AppError::Other(err.to_string())
+   |         ^^^^^^^^ help: use the applicable keyword: `Self`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#use_self
+
+error: unnecessary structure name repetition
+  --> src/errors/mod.rs:27:13
+   |
+27 |             CphError::Application(app_err) => match app_err {
+   |             ^^^^^^^^ help: use the applicable keyword: `Self`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#use_self
+
+error: unnecessary structure name repetition
+  --> src/errors/mod.rs:33:13
+   |
+33 |             CphError::Cli(msg) => format!("Command line error: {msg}"),
+   |             ^^^^^^^^ help: use the applicable keyword: `Self`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#use_self
+
+error: unnecessary structure name repetition
+  --> src/errors/mod.rs:34:13
+   |
+34 |             CphError::Unknown(msg) => format!("An unexpected error occurred: {msg}"),
+   |             ^^^^^^^^ help: use the applicable keyword: `Self`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#use_self
+
+error: unnecessary structure name repetition
+  --> src/errors/mod.rs:41:13
+   |
+41 |             CphError::Application(ApplicationError::InvalidInput(_)) => 
+   |             ^^^^^^^^ help: use the applicable keyword: `Self`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#use_self
+
+error: unnecessary structure name repetition
+  --> src/errors/mod.rs:43:13
+   |
+43 |             CphError::Application(ApplicationError::OperationNotPermitted(_)) => 
+   |             ^^^^^^^^ help: use the applicable keyword: `Self`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#use_self
+
+error: unnecessary structure name repetition
+  --> src/errors/mod.rs:45:13
+   |
+45 |             CphError::Application(ApplicationError::ResourceConflict(_)) => 
+   |             ^^^^^^^^ help: use the applicable keyword: `Self`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#use_self
+
+error: you should consider adding a `Default` implementation for `LocalFileSystem`
+  --> src/infrastructure/drivers/file_system.rs:9:5
+   |
+9  | /     pub fn new() -> Self {
+10 | |         Self
+11 | |     }
+   | |_____^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#new_without_default
+help: try adding this
+   |
+8  + impl Default for LocalFileSystem {
+9  +     fn default() -> Self {
+10 +         Self::new()
+11 +     }
+12 + }
+   |
+
+error: this could be a `const fn`
+  --> src/infrastructure/drivers/file_system.rs:9:5
+   |
+9  | /     pub fn new() -> Self {
+10 | |         Self
+11 | |     }
+   | |_____^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_const_for_fn
+help: make the function `const`
+   |
+9  |     pub const fn new() -> Self {
+   |         +++++
+
+error: you should consider adding a `Default` implementation for `SystemShell`
+  --> src/infrastructure/drivers/shell.rs:11:5
+   |
+11 | /     pub fn new() -> Self {
+12 | |         Self
+13 | |     }
+   | |_____^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#new_without_default
+help: try adding this
+   |
+10 + impl Default for SystemShell {
+11 +     fn default() -> Self {
+12 +         Self::new()
+13 +     }
+14 + }
+   |
+
+error: this could be a `const fn`
+  --> src/infrastructure/drivers/shell.rs:11:5
+   |
+11 | /     pub fn new() -> Self {
+12 | |         Self
+13 | |     }
+   | |_____^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_const_for_fn
+help: make the function `const`
+   |
+11 |     pub const fn new() -> Self {
+   |         +++++
+
+error: you should consider adding a `Default` implementation for `TracingLogger`
+  --> src/infrastructure/drivers/logger.rs:9:5
+   |
+9  | /     pub fn new() -> Self {
+10 | |         Self {
+11 | |             level: Mutex::new(LogLevel::Info),
+12 | |         }
+13 | |     }
+   | |_____^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#new_without_default
+help: try adding this
+   |
+8  + impl Default for TracingLogger {
+9  +     fn default() -> Self {
+10 +         Self::new()
+11 +     }
+12 + }
+   |
+
+error: this could be a `const fn`
+  --> src/infrastructure/drivers/logger.rs:9:5
+   |
+9  | /     pub fn new() -> Self {
+10 | |         Self {
+11 | |             level: Mutex::new(LogLevel::Info),
+12 | |         }
+13 | |     }
+   | |_____^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#missing_const_for_fn
+help: make the function `const`
+   |
+9  |     pub const fn new() -> Self {
+   |         +++++
+
+error: unused `self` argument
+  --> src/infrastructure/drivers/test_runner.rs:21:28
+   |
+21 |     fn get_compile_command(&self, solution_path: &Path) -> Option<String> {
+   |                            ^^^^^
+   |
+   = help: consider refactoring to an associated function
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unused_self
+
+error: this match arm has an identical body to another arm
+  --> src/infrastructure/drivers/test_runner.rs:29:13
+   |
+29 |             "py" => None, // Python doesn't need compilation
+   |             ^^^^^^^^^^^^
+   |
+   = help: try changing either arm body
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#match_same_arms
+   = note: `-D clippy::match-same-arms` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::match_same_arms)]`
+help: or try merging the arm patterns and removing the obsolete arm
+   |
+29 ~             "py" | "js" => None, // Python doesn't need compilation
+30 |             "java" => Some(format!("javac {}", solution_path.display())),
+31 |             "go" => Some(format!("go build -o {} {}", output_path.display(), solution_path.display())),
+32 ~             // JavaScript doesn't need compilation
+   |
+
+error: this match arm has an identical body to the `_` wildcard arm
+  --> src/infrastructure/drivers/test_runner.rs:29:13
+   |
+29 |             "py" => None, // Python doesn't need compilation
+   |             ^^^^^^^^^^^^^^ help: try removing the arm
+   |
+   = help: or try changing either arm body
+note: `_` wildcard arm here
+  --> src/infrastructure/drivers/test_runner.rs:33:13
+   |
+33 |             _ => None,
+   |             ^^^^^^^^^
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#match_same_arms
+
+error: this match arm has an identical body to the `_` wildcard arm
+  --> src/infrastructure/drivers/test_runner.rs:32:13
+   |
+32 |             "js" => None, // JavaScript doesn't need compilation
+   |             ^^^^^^^^^^^^^^ help: try removing the arm
+   |
+   = help: or try changing either arm body
+note: `_` wildcard arm here
+  --> src/infrastructure/drivers/test_runner.rs:33:13
+   |
+33 |             _ => None,
+   |             ^^^^^^^^^
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#match_same_arms
+
+error: unused `self` argument
+  --> src/infrastructure/drivers/test_runner.rs:37:24
+   |
+37 |     fn get_run_command(&self, solution_path: &Path) -> Option<String> {
+   |                        ^^^^^
+   |
+   = help: consider refactoring to an associated function
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unused_self
+
+error: variables can be used directly in the `format!` string
+  --> src/infrastructure/drivers/test_runner.rs:47:22
+   |
+47 |                 Some(format!("java {}", class_name))
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+   |
+47 -                 Some(format!("java {}", class_name))
+47 +                 Some(format!("java {class_name}"))
+   |
+
+error: redundant clone
+  --> src/infrastructure/drivers/test_runner.rs:96:39
+   |
+96 |                 message: output.stderr.clone(),
+   |                                       ^^^^^^^^ help: remove this
+   |
+note: this value is dropped without further use
+  --> src/infrastructure/drivers/test_runner.rs:96:26
+   |
+96 |                 message: output.stderr.clone(),
+   |                          ^^^^^^^^^^^^^
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#redundant_clone
+   = note: `-D clippy::redundant-clone` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::redundant_clone)]`
+
+error: casting `u128` to `u64` may truncate the value
+  --> src/infrastructure/drivers/test_runner.rs:89:33
+   |
+89 |         let execution_time_ms = start_time.elapsed().as_millis() as u64;
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#cast_possible_truncation
+   = note: `-D clippy::cast-possible-truncation` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::cast_possible_truncation)]`
+help: ... or use `try_from` and handle the error accordingly
+   |
+89 -         let execution_time_ms = start_time.elapsed().as_millis() as u64;
+89 +         let execution_time_ms = u64::try_from(start_time.elapsed().as_millis());
+   |
+
+error: variables can be used directly in the `format!` string
+   --> src/infrastructure/drivers/test_runner.rs:102:25
+    |
+102 |                   reason: format!(
+    |  _________________________^
+103 | |                     "Expected:\n{}\n\nActual:\n{}",
+104 | |                     expected_output,
+105 | |                     actual_output
+106 | |                 ),
+    | |_________________^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+
+error: variables can be used directly in the `format!` string
+  --> src/infrastructure/providers/config_loader.rs:45:61
+   |
+45 |             .map_err(|e| InfrastructureError::Serialization(format!("Failed to parse configuration file: {}", e)))
+   |                                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+   |
+45 -             .map_err(|e| InfrastructureError::Serialization(format!("Failed to parse configuration file: {}", e)))
+45 +             .map_err(|e| InfrastructureError::Serialization(format!("Failed to parse configuration file: {e}")))
+   |
+
+error: unused `self` argument
+  --> src/infrastructure/providers/config_loader.rs:49:22
+   |
+49 |     fn merge_configs(&self, _base: Config, overlay: Config) -> Config {
+   |                      ^^^^^
+   |
+   = help: consider refactoring to an associated function
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unused_self
+
+error: variables can be used directly in the `format!` string
+  --> src/infrastructure/providers/config_loader.rs:73:42
+   |
+73 |         let path = self.get_config_path(&format!("{}/env.json", language));
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+   |
+73 -         let path = self.get_config_path(&format!("{}/env.json", language));
+73 +         let path = self.get_config_path(&format!("{language}/env.json"));
+   |
+
+error: variables can be used directly in the `format!` string
+  --> src/infrastructure/providers/config_loader.rs:94:42
+   |
+94 |         let path = self.get_config_path(&format!("{}/env.json", language));
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+   |
+94 -         let path = self.get_config_path(&format!("{}/env.json", language));
+94 +         let path = self.get_config_path(&format!("{language}/env.json"));
+   |
+
+error: variables can be used directly in the `format!` string
+   --> src/infrastructure/providers/config_loader.rs:103:61
+    |
+103 |             .map_err(|e| InfrastructureError::Serialization(format!("Failed to serialize configuration: {}", e)))?;
+    |                                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+103 -             .map_err(|e| InfrastructureError::Serialization(format!("Failed to serialize configuration: {}", e)))?;
+103 +             .map_err(|e| InfrastructureError::Serialization(format!("Failed to serialize configuration: {e}")))?;
+    |
+
+error: you should consider adding a `Default` implementation for `InMemoryConfigLoader`
+   --> src/infrastructure/providers/config_loader.rs:119:5
+    |
+119 | /     pub fn new() -> Self {
+120 | |         Self {
+121 | |             configs: std::sync::RwLock::new(std::collections::HashMap::new()),
+122 | |         }
+123 | |     }
+    | |_____^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#new_without_default
+help: try adding this
+    |
+118 + impl Default for InMemoryConfigLoader {
+119 +     fn default() -> Self {
+120 +         Self::new()
+121 +     }
+122 + }
+    |
+
+error: temporary with significant `Drop` can be early dropped
+   --> src/infrastructure/providers/config_loader.rs:126:17
+    |
+125 |       pub fn set_config(&self, key: &str, config: Config) -> Result<(), InfrastructureError> {
+    |  ____________________________________________________________________________________________-
+126 | |         let mut configs = self.configs.write()
+    | |                 ^^^^^^^
+127 | |             .map_err(|_| InfrastructureError::ConfigurationLoading("Failed to acquire write lock".to_string()))?;
+128 | |         configs.insert(key.to_string(), config);
+129 | |         Ok(())
+130 | |     }
+    | |_____- temporary `configs` is currently being dropped at the end of its contained scope
+    |
+    = note: this might lead to unnecessary resource contention
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#significant_drop_tightening
+    = note: `-D clippy::significant-drop-tightening` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::significant_drop_tightening)]`
+help: merge the temporary construction with its single usage
+    |
+126 ~         
+127 +         self.configs.write()
+128 +             .map_err(|_| InfrastructureError::ConfigurationLoading("Failed to acquire write lock".to_string()))?.insert(key.to_string(), config);
+129 ~         
+    |
+
+error: temporary with significant `Drop` can be early dropped
+   --> src/infrastructure/providers/config_loader.rs:170:17
+    |
+133 | #[async_trait]
+    | -------------- temporary `configs` is currently being dropped at the end of its contained scope
+...
+170 |         let mut configs = self.configs.write()
+    |                 ^^^^^^^
+    |
+    = note: this might lead to unnecessary resource contention
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#significant_drop_tightening
+help: merge the temporary construction with its single usage
+    |
+170 ~         
+171 +         self.configs.write()
+172 +             .map_err(|_| InfrastructureError::ConfigurationLoading("Failed to acquire write lock".to_string()))?.insert(language.to_string(), config.clone());
+173 ~         
+    |
+
+error: missing `#[must_use]` attribute on a method returning `Self`
+  --> src/infrastructure/test_support/mock_drivers/file_system.rs:21:5
+   |
+21 | /     pub fn with_file(mut self, path: impl Into<PathBuf>, content: impl Into<String>) -> Self {
+22 | |         self.files.insert(path.into(), content.into());
+23 | |         self
+24 | |     }
+   | |_____^
+   |
+   = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#return_self_not_must_use
+   = note: `-D clippy::return-self-not-must-use` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::return_self_not_must_use)]`
+
+error: missing `#[must_use]` attribute on a method returning `Self`
+  --> src/infrastructure/test_support/mock_drivers/file_system.rs:26:5
+   |
+26 | /     pub fn with_directory(mut self, path: impl Into<PathBuf>) -> Self {
+27 | |         self.directories.push(path.into());
+28 | |         self
+29 | |     }
+   | |_____^
+   |
+   = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#return_self_not_must_use
+
+error: used `unwrap()` on an `Option` value
+  --> src/infrastructure/test_support/mock_drivers/file_system.rs:63:9
+   |
+63 |         self.read_expectations.last_mut().unwrap()
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is `None`, it will panic
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+   = note: requested on the command line with `-D clippy::unwrap-used`
+
+error: used `unwrap()` on an `Option` value
+  --> src/infrastructure/test_support/mock_drivers/file_system.rs:69:9
+   |
+69 |         self.write_expectations.last_mut().unwrap()
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is `None`, it will panic
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: missing `#[must_use]` attribute on a method returning `Self`
+  --> src/infrastructure/test_support/mock_drivers/shell.rs:74:5
+   |
+74 | /     pub fn with_response(self, command: impl Into<String>, response: CommandResponse) -> Self {
+75 | |         self.inner.lock().unwrap().responses.insert(command.into(), response);
+76 | |         self
+77 | |     }
+   | |_____^
+   |
+   = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#return_self_not_must_use
+
+error: used `unwrap()` on a `Result` value
+  --> src/infrastructure/test_support/mock_drivers/shell.rs:75:9
+   |
+75 |         self.inner.lock().unwrap().responses.insert(command.into(), response);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is an `Err`, it will panic
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: missing `#[must_use]` attribute on a method returning `Self`
+  --> src/infrastructure/test_support/mock_drivers/shell.rs:79:5
+   |
+79 | /     pub fn with_context_response(
+80 | |         self,
+81 | |         command: impl Into<String>,
+82 | |         input: Option<String>,
+...  |
+92 | |         self
+93 | |     }
+   | |_____^
+   |
+   = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#return_self_not_must_use
+
+error: used `unwrap()` on a `Result` value
+  --> src/infrastructure/test_support/mock_drivers/shell.rs:91:9
+   |
+91 |         self.inner.lock().unwrap().context_responses.insert(context, response);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is an `Err`, it will panic
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> src/infrastructure/test_support/mock_drivers/shell.rs:105:25
+    |
+105 |         let mut inner = self.inner.lock().unwrap();
+    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: redundant closure
+   --> src/infrastructure/test_support/mock_drivers/shell.rs:113:30
+    |
+113 |             input: input.map(|s| s.to_string()),
+    |                              ^^^^^^^^^^^^^^^^^ help: replace the closure with the method itself: `std::string::ToString::to_string`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#redundant_closure_for_method_calls
+    = note: `-D clippy::redundant-closure-for-method-calls` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::redundant_closure_for_method_calls)]`
+
+error: redundant closure
+   --> src/infrastructure/test_support/mock_drivers/shell.rs:120:30
+    |
+120 |             input: input.map(|s| s.to_string()),
+    |                              ^^^^^^^^^^^^^^^^^ help: replace the closure with the method itself: `std::string::ToString::to_string`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#redundant_closure_for_method_calls
+
+error: used `unwrap()` on a `Result` value
+   --> src/infrastructure/test_support/mock_drivers/shell.rs:136:9
+    |
+136 |         self.inner.lock().unwrap().command_history.clone()
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> src/infrastructure/test_support/mock_drivers/shell.rs:141:9
+    |
+141 |         self.inner.lock().unwrap().expectations.push(expectation.clone());
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: unused `self` argument
+   --> src/infrastructure/test_support/mock_drivers/shell.rs:194:27
+    |
+194 |     fn create_exit_status(&self, code: i32) -> ExitStatus {
+    |                           ^^^^^
+    |
+    = help: consider refactoring to an associated function
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unused_self
+
+error: variables can be used directly in the `format!` string
+   --> src/infrastructure/test_support/mock_drivers/shell.rs:199:18
+    |
+199 |             .arg(format!("exit {}", code))
+    |                  ^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
+help: change this to
+    |
+199 -             .arg(format!("exit {}", code))
+199 +             .arg(format!("exit {code}"))
+    |
+
+error: used `unwrap()` on a `Result` value
+   --> src/infrastructure/test_support/mock_drivers/shell.rs:201:33
+    |
+201 |             .unwrap_or_else(|_| std::process::Command::new("true").status().unwrap())
+    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: `unimplemented` should not be present in production code
+   --> src/infrastructure/test_support/mock_drivers/shell.rs:209:9
+    |
+209 |         unimplemented!("Use expect_command() instead")
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unimplemented
+    = note: requested on the command line with `-D clippy::unimplemented`
+
+error: used `unwrap()` on a `Result` value
+   --> src/infrastructure/test_support/mock_drivers/shell.rs:213:25
+    |
+213 |         let mut inner = self.inner.lock().unwrap();
+    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: temporary with significant `Drop` can be early dropped
+   --> src/infrastructure/test_support/mock_drivers/shell.rs:219:13
+    |
+218 |       fn verify(&self) -> Result<()> {
+    |  ____________________________________-
+219 | |         let inner = self.inner.lock().unwrap();
+    | |             ^^^^^
+220 | |         for expectation in &inner.expectations {
+221 | |             expectation.verify()?;
+222 | |         }
+223 | |         Ok(())
+224 | |     }
+    | |_____- temporary `inner` is currently being dropped at the end of its contained scope
+    |
+    = note: this might lead to unnecessary resource contention
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#significant_drop_tightening
+help: merge the temporary construction with its single usage
+    |
+219 ~         
+220 +         self.inner.lock().unwrap().;
+221 ~         
+    |
+
+error: used `unwrap()` on a `Result` value
+   --> src/infrastructure/test_support/mock_drivers/shell.rs:219:21
+    |
+219 |         let inner = self.inner.lock().unwrap();
+    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: you are deriving `PartialEq` and can implement `Eq`
+  --> src/infrastructure/test_support/mock_drivers/docker.rs:21:24
+   |
+21 | #[derive(Clone, Debug, PartialEq)]
+   |                        ^^^^^^^^^ help: consider deriving `Eq` as well: `PartialEq, Eq`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#derive_partial_eq_without_eq
+
+error: missing `#[must_use]` attribute on a method returning `Self`
+  --> src/infrastructure/test_support/mock_drivers/docker.rs:41:5
+   |
+41 | /     pub fn with_image(mut self, image: impl Into<String>) -> Self {
+42 | |         self.images.push(image.into());
+43 | |         self
+44 | |     }
+   | |_____^
+   |
+   = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#return_self_not_must_use
+
+error: missing `#[must_use]` attribute on a method returning `Self`
+  --> src/infrastructure/test_support/mock_drivers/docker.rs:46:5
+   |
+46 | /     pub fn with_container(mut self, id: impl Into<String>, info: ContainerInfo) -> Self {
+47 | |         self.containers.insert(id.into(), info);
+48 | |         self
+49 | |     }
+   | |_____^
+   |
+   = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#return_self_not_must_use
+
+error: missing `#[must_use]` attribute on a method returning `Self`
+  --> src/infrastructure/test_support/mock_drivers/docker.rs:51:5
+   |
+51 | /     pub fn with_run_response(mut self, key: impl Into<String>, response: RunResponse) -> Self {
+52 | |         self.run_responses.insert(key.into(), response);
+53 | |         self
+54 | |     }
+   | |_____^
+   |
+   = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#return_self_not_must_use
+
+error: used `unwrap()` on an `Option` value
+  --> src/infrastructure/test_support/mock_drivers/docker.rs:97:9
+   |
+97 |         self.expectations.last_mut().unwrap()
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is `None`, it will panic
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: you should consider adding a `Default` implementation for `MockConfigLoader`
+  --> src/infrastructure/test_support/mock_drivers/mock_config_loader.rs:15:5
+   |
+15 | /     pub fn new() -> Self {
+16 | |         let mut configs = HashMap::new();
+17 | |         configs.insert("system".to_string(), Config::default());
+18 | |         configs.insert("shared".to_string(), Config::default());
+...  |
+25 | |     }
+   | |_____^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#new_without_default
+help: try adding this
+   |
+14 + impl Default for MockConfigLoader {
+15 +     fn default() -> Self {
+16 +         Self::new()
+17 +     }
+18 + }
+   |
+
+error: temporary with significant `Drop` can be early dropped
+   --> src/infrastructure/test_support/mock_drivers/mock_config_loader.rs:101:17
+    |
+40  | #[async_trait]
+    | -------------- temporary `configs` is currently being dropped at the end of its contained scope
+...
+101 |         let mut configs = self.configs.write()
+    |                 ^^^^^^^
+    |
+    = note: this might lead to unnecessary resource contention
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#significant_drop_tightening
+help: merge the temporary construction with its single usage
+    |
+101 ~         
+102 +         self.configs.write()
+103 +             .map_err(|_| InfrastructureError::ConfigurationLoading("Failed to acquire write lock".to_string()))?.insert(language.to_string(), config.clone());
+104 |         
+105 ~         
+    |
+
+error: this `impl` can be derived
+  --> src/infrastructure/test_support/mod.rs:23:1
+   |
+23 | / impl Default for TestConfig {
+24 | |     fn default() -> Self {
+25 | |         Self {
+26 | |             temp_dir: None,
+...  |
+30 | | }
+   | |_^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#derivable_impls
+   = note: `-D clippy::derivable-impls` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::derivable_impls)]`
+help: replace the manual implementation with a derive attribute
+   |
+18 + #[derive(Default)]
+19 ~ pub struct TestConfig {
+   |
+
+error: missing `#[must_use]` attribute on a method returning `Self`
+  --> src/infrastructure/test_support/mod.rs:48:5
+   |
+48 | /     pub fn with_file(mut self, path: &str, content: &str) -> Self {
+49 | |         let full_path = self.temp_dir.path().join(path);
+50 | |         self.files.insert(full_path, content.to_string());
+51 | |         self
+52 | |     }
+   | |_____^
+   |
+   = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#return_self_not_must_use
+
+error: missing `#[must_use]` attribute on a method returning `Self`
+  --> src/infrastructure/test_support/mod.rs:54:5
+   |
+54 | /     pub fn with_env(mut self, key: &str, value: &str) -> Self {
+55 | |         self.config.env_vars.insert(key.to_string(), value.to_string());
+56 | |         self
+57 | |     }
+   | |_____^
+   |
+   = help: consider adding the `#[must_use]` attribute to the method or directly to the `Self` type
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#return_self_not_must_use
+
+error: you should consider adding a `Default` implementation for `Expectation`
+  --> src/infrastructure/test_support/mod.rs:92:5
+   |
+92 | /     pub fn new() -> Self {
+93 | |         Self {
+94 | |             times: None,
+95 | |             called: std::sync::Arc::new(std::sync::Mutex::new(0)),
+96 | |         }
+97 | |     }
+   | |_____^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#new_without_default
+help: try adding this
+   |
+91 + impl Default for Expectation {
+92 +     fn default() -> Self {
+93 +         Self::new()
+94 +     }
+95 + }
+   |
+
+error: used `unwrap()` on a `Result` value
+   --> src/infrastructure/test_support/mod.rs:105:23
+    |
+105 |         let called = *self.called.lock().unwrap();
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> src/infrastructure/test_support/mod.rs:119:26
+    |
+119 |         let mut called = self.called.lock().unwrap();
+    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+  --> src/infrastructure/drivers/file_system.rs:63:24
+   |
+63 |         let temp_dir = TempDir::new().unwrap();
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is an `Err`, it will panic
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+  --> src/infrastructure/drivers/file_system.rs:69:9
+   |
+69 |         fs.write(&file_path, content).await.unwrap();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is an `Err`, it will panic
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+  --> src/infrastructure/drivers/file_system.rs:72:28
+   |
+72 |         let read_content = fs.read(&file_path).await.unwrap();
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is an `Err`, it will panic
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+  --> src/infrastructure/drivers/file_system.rs:78:24
+   |
+78 |         let temp_dir = TempDir::new().unwrap();
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is an `Err`, it will panic
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+  --> src/infrastructure/drivers/file_system.rs:83:18
+   |
+83 |         assert!(!fs.exists(&file_path).await.unwrap());
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is an `Err`, it will panic
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+  --> src/infrastructure/drivers/file_system.rs:86:9
+   |
+86 |         fs.write(&file_path, "test").await.unwrap();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is an `Err`, it will panic
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+  --> src/infrastructure/drivers/file_system.rs:89:17
+   |
+89 |         assert!(fs.exists(&file_path).await.unwrap());
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is an `Err`, it will panic
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+  --> src/infrastructure/drivers/file_system.rs:94:24
+   |
+94 |         let temp_dir = TempDir::new().unwrap();
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is an `Err`, it will panic
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+  --> src/infrastructure/drivers/file_system.rs:99:9
+   |
+99 |         fs.create_dir(&dir_path).await.unwrap();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is an `Err`, it will panic
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> src/infrastructure/drivers/file_system.rs:102:17
+    |
+102 |         assert!(fs.exists(&dir_path).await.unwrap());
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> src/infrastructure/drivers/file_system.rs:107:24
+    |
+107 |         let temp_dir = TempDir::new().unwrap();
+    |                        ^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> src/infrastructure/drivers/file_system.rs:112:9
+    |
+112 |         fs.write(&file_path, "test").await.unwrap();
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> src/infrastructure/drivers/file_system.rs:113:17
+    |
+113 |         assert!(fs.exists(&file_path).await.unwrap());
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> src/infrastructure/drivers/file_system.rs:115:9
+    |
+115 |         fs.remove(&file_path).await.unwrap();
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> src/infrastructure/drivers/file_system.rs:116:18
+    |
+116 |         assert!(!fs.exists(&file_path).await.unwrap());
+    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> src/infrastructure/drivers/file_system.rs:121:24
+    |
+121 |         let temp_dir = TempDir::new().unwrap();
+    |                        ^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> src/infrastructure/drivers/file_system.rs:128:9
+    |
+128 |         fs.write(&source, content).await.unwrap();
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> src/infrastructure/drivers/file_system.rs:131:9
+    |
+131 |         fs.copy(&source, &dest).await.unwrap();
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> src/infrastructure/drivers/file_system.rs:134:17
+    |
+134 |         assert!(fs.exists(&source).await.unwrap());
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> src/infrastructure/drivers/file_system.rs:135:17
+    |
+135 |         assert!(fs.exists(&dest).await.unwrap());
+    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> src/infrastructure/drivers/file_system.rs:136:20
+    |
+136 |         assert_eq!(fs.read(&dest).await.unwrap(), content);
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> src/infrastructure/drivers/file_system.rs:141:24
+    |
+141 |         let temp_dir = TempDir::new().unwrap();
+    |                        ^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> src/infrastructure/drivers/file_system.rs:145:9
+    |
+145 |         fs.write(&temp_dir.path().join("file1.txt"), "1").await.unwrap();
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> src/infrastructure/drivers/file_system.rs:146:9
+    |
+146 |         fs.write(&temp_dir.path().join("file2.txt"), "2").await.unwrap();
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> src/infrastructure/drivers/file_system.rs:147:9
+    |
+147 |         fs.create_dir(&temp_dir.path().join("subdir")).await.unwrap();
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> src/infrastructure/drivers/file_system.rs:150:23
+    |
+150 |         let entries = fs.list_dir(temp_dir.path()).await.unwrap();
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> src/infrastructure/drivers/shell.rs:115:22
+    |
+115 |         let result = shell.execute("echo 'Hello, World!'").await.unwrap();
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> src/infrastructure/drivers/shell.rs:125:24
+    |
+125 |         let temp_dir = tempfile::TempDir::new().unwrap();
+    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> src/infrastructure/drivers/shell.rs:126:22
+    |
+126 |         let result = shell.execute_with_cwd("pwd", Some(temp_dir.path())).await.unwrap();
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> src/infrastructure/drivers/shell.rs:136:22
+    |
+136 |         let result = shell.execute_with_env("echo $TEST_VAR", None, &env).await.unwrap();
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> src/infrastructure/drivers/shell.rs:145:22
+    |
+145 |         let result = shell.execute("exit 1").await.unwrap();
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> src/infrastructure/drivers/shell.rs:153:22
+    |
+153 |         let result = shell.execute("echo 'error' >&2").await.unwrap();
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: unused `async` for function with no await statements
+  --> src/infrastructure/test_support/mock_drivers/file_system.rs:31:5
+   |
+31 | /     pub async fn read_file(&self, path: &Path) -> Result<String> {
+32 | |         if let Some(expectation) = self.read_expectations.first() {
+33 | |             expectation.call();
+...  |
+39 | |             .ok_or_else(|| anyhow::anyhow!("File not found: {:?}", path))
+40 | |     }
+   | |_____^
+   |
+   = help: consider removing the `async` from this function
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unused_async
+   = note: `-D clippy::unused-async` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unused_async)]`
+
+error: unused `async` for function with no await statements
+  --> src/infrastructure/test_support/mock_drivers/file_system.rs:42:5
+   |
+42 | /     pub async fn write_file(&mut self, path: &Path, content: &str) -> Result<()> {
+43 | |         if let Some(expectation) = self.write_expectations.first() {
+44 | |             expectation.call();
+...  |
+48 | |         Ok(())
+49 | |     }
+   | |_____^
+   |
+   = help: consider removing the `async` from this function
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unused_async
+
+error: unused `async` for function with no await statements
+  --> src/infrastructure/test_support/mock_drivers/file_system.rs:51:5
+   |
+51 | /     pub async fn create_dir(&mut self, path: &Path) -> Result<()> {
+52 | |         self.directories.push(path.to_path_buf());
+53 | |         Ok(())
+54 | |     }
+   | |_____^
+   |
+   = help: consider removing the `async` from this function
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unused_async
+
+error: unused `async` for function with no await statements
+  --> src/infrastructure/test_support/mock_drivers/file_system.rs:56:5
+   |
+56 | /     pub async fn exists(&self, path: &Path) -> bool {
+57 | |         self.files.contains_key(path) || self.directories.iter().any(|d| d == path)
+58 | |     }
+   | |_____^
+   |
+   = help: consider removing the `async` from this function
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unused_async
+
+error: unused `async` for function with no await statements
+   --> src/infrastructure/test_support/mock_drivers/shell.rs:99:5
+    |
+99  | /     async fn execute_internal(
+100 | |         &self,
+101 | |         command: &str,
+102 | |         input: Option<&str>,
+...   |
+132 | |             .ok_or_else(|| anyhow::anyhow!("No response configured for command: {} (input: {:?}, cwd: {:?})", command, input, cwd))
+133 | |     }
+    | |_____^
+    |
+    = help: consider removing the `async` from this function
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unused_async
+
+error: unused `async` for function with no await statements
+  --> src/infrastructure/test_support/mock_drivers/docker.rs:56:5
+   |
+56 | /     pub async fn run_container(
+57 | |         &mut self,
+58 | |         image: &str,
+59 | |         command: &[String],
+...  |
+79 | |             .ok_or_else(|| anyhow::anyhow!("No response configured"))
+80 | |     }
+   | |_____^
+   |
+   = help: consider removing the `async` from this function
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unused_async
+
+error: unused `async` for function with no await statements
+  --> src/infrastructure/test_support/mock_drivers/docker.rs:82:5
+   |
+82 | /     pub async fn pull_image(&mut self, image: &str) -> Result<()> {
+83 | |         if !self.images.contains(&image.to_string()) {
+84 | |             self.images.push(image.to_string());
+...  |
+87 | |     }
+   | |_____^
+   |
+   = help: consider removing the `async` from this function
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unused_async
+
+error: unused `async` for function with no await statements
+  --> src/infrastructure/test_support/mock_drivers/docker.rs:89:5
+   |
+89 | /     pub async fn remove_container(&mut self, id: &str) -> Result<()> {
+90 | |         self.containers.remove(id);
+91 | |         Ok(())
+92 | |     }
+   | |_____^
+   |
+   = help: consider removing the `async` from this function
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unused_async
+
+error: could not compile `cph` (lib) due to 113 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: used `unwrap()` on a `Result` value
+   --> src/infrastructure/providers/config_loader.rs:185:24
+    |
+185 |         let temp_dir = TempDir::new().unwrap();
+    |                        ^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> src/infrastructure/providers/config_loader.rs:191:9
+    |
+191 |         fs.create_dir(&config_dir).await.unwrap();
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> src/infrastructure/providers/config_loader.rs:195:20
+    |
+195 |         let json = serde_json::to_string_pretty(&test_config).unwrap();
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> src/infrastructure/providers/config_loader.rs:196:9
+    |
+196 |         fs.write(&config_path, &json).await.unwrap();
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> src/infrastructure/providers/config_loader.rs:199:29
+    |
+199 |         let loaded_config = loader.load_language_config("rust").unwrap();
+    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: redundant clone
+   --> src/infrastructure/providers/config_loader.rs:210:41
+    |
+210 |         loader.set_config("test", config.clone()).unwrap();
+    |                                         ^^^^^^^^ help: remove this
+    |
+note: this value is dropped without further use
+   --> src/infrastructure/providers/config_loader.rs:210:35
+    |
+210 |         loader.set_config("test", config.clone()).unwrap();
+    |                                   ^^^^^^
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#redundant_clone
+
+error: used `unwrap()` on a `Result` value
+   --> src/infrastructure/providers/config_loader.rs:210:9
+    |
+210 |         loader.set_config("test", config.clone()).unwrap();
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on a `Result` value
+   --> src/infrastructure/providers/config_loader.rs:212:29
+    |
+212 |         let loaded_config = loader.load_language_config("test").unwrap();
+    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: if this value is an `Err`, it will panic
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: used `unwrap()` on an `Option` value
+  --> src/infrastructure/test_support/mock_drivers/file_system.rs:63:9
+   |
+63 |         self.read_expectations.last_mut().unwrap()
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: if this value is `None`, it will panic
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used
+
+error: could not compile `cph` (lib test) due to 155 previous errors
