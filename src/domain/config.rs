@@ -208,7 +208,7 @@ impl ConfigContext {
         }
         
         for (key, value) in &self.custom {
-            result = result.replace(&format!("{{{}}}", key), value);
+            result = result.replace(&format!("{{{key}}}"), value);
         }
         
         result

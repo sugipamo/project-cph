@@ -65,7 +65,7 @@ impl ConfigService {
         Ok(merged_config)
     }
 
-    /// Load configuration as a ConfigNode tree for hierarchical access
+    /// Load configuration as a `ConfigNode` tree for hierarchical access
     pub fn load_config_node(&self, language: &str) -> Result<ConfigNode, ApplicationError> {
         // Check cache first
         {
@@ -154,13 +154,13 @@ impl ConfigService {
         Ok(result)
     }
 
-    /// Build a ConfigNode tree from a Config structure
+    /// Build a `ConfigNode` tree from a `Config` structure
     fn build_config_node(&self, config: Config) -> Result<ConfigNode, ApplicationError> {
         let mut root = ConfigNode::new("root".to_string());
         
         // Convert Config to JSON value for easier tree building
         let json_value = serde_json::to_value(&config)
-            .map_err(|e| ApplicationError::UseCaseFailed(format!("Failed to serialize config: {}", e)))?;
+            .map_err(|e| ApplicationError::UseCaseFailed(format!("Failed to serialize config: {e}")))?;
         
         if let serde_json::Value::Object(map) = json_value {
             for (key, value) in map {
@@ -171,7 +171,7 @@ impl ConfigService {
         Ok(root)
     }
 
-    /// Insert a JSON value into the ConfigNode tree
+    /// Insert a JSON value into the `ConfigNode` tree
     fn insert_json_value(
         &self, 
         node: &mut ConfigNode, 
@@ -215,7 +215,7 @@ impl ConfigService {
         Ok(())
     }
 
-    /// Convert JSON value to ConfigValue
+    /// Convert JSON value to `ConfigValue`
     fn json_to_config_value(&self, value: serde_json::Value) -> Result<ConfigValue, ApplicationError> {
         match value {
             serde_json::Value::String(s) => Ok(ConfigValue::String(s)),
@@ -247,7 +247,7 @@ impl ConfigService {
         }
     }
 
-    /// Expand template values in a ConfigValue
+    /// Expand template values in a `ConfigValue`
     fn expand_value(&self, value: &ConfigValue, context: &ConfigContext) -> Option<ConfigValue> {
         match value {
             ConfigValue::String(s) => Some(ConfigValue::String(context.expand(s))),

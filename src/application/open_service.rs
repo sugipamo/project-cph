@@ -64,13 +64,15 @@ impl OpenService {
         // Rust用の基本テンプレート
         let template_content = r#"use std::io;
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut input = String::new();
-    io::stdin().read_line(&mut input).expect("Failed to read line");
+    io::stdin().read_line(&mut input)?;
     
     // TODO: 問題を解くコードを実装
     
     println!("{}", input.trim());
+    
+    Ok(())
 }
 "#;
         

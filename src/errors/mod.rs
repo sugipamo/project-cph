@@ -25,13 +25,13 @@ impl CphError {
     pub fn to_user_message(&self) -> String {
         match self {
             CphError::Application(app_err) => match app_err {
-                ApplicationError::InvalidInput(msg) => format!("Invalid input: {}", msg),
-                ApplicationError::OperationNotPermitted(msg) => format!("Operation not permitted: {}", msg),
-                ApplicationError::ResourceConflict(msg) => format!("Resource conflict: {}", msg),
-                _ => format!("An error occurred: {}", app_err),
+                ApplicationError::InvalidInput(msg) => format!("Invalid input: {msg}"),
+                ApplicationError::OperationNotPermitted(msg) => format!("Operation not permitted: {msg}"),
+                ApplicationError::ResourceConflict(msg) => format!("Resource conflict: {msg}"),
+                _ => format!("An error occurred: {app_err}"),
             },
-            CphError::Cli(msg) => format!("Command line error: {}", msg),
-            CphError::Unknown(msg) => format!("An unexpected error occurred: {}", msg),
+            CphError::Cli(msg) => format!("Command line error: {msg}"),
+            CphError::Unknown(msg) => format!("An unexpected error occurred: {msg}"),
         }
     }
     

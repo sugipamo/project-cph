@@ -64,7 +64,7 @@ impl TestService {
         let extensions = ["rs", "cpp", "py", "java", "go", "js"];
         
         for ext in &extensions {
-            let solution_path = problem_dir.join(format!("main.{}", ext));
+            let solution_path = problem_dir.join(format!("main.{ext}"));
             if self.file_system.exists(&solution_path).await? {
                 return Ok(solution_path);
             }
@@ -95,7 +95,7 @@ impl TestService {
                 .ok_or_else(|| crate::errors::AppError::Validation("Invalid input file name".to_string()))?
                 .to_string_lossy();
             
-            let output_file = sample_dir.join(format!("{}.out", base_name));
+            let output_file = sample_dir.join(format!("{base_name}.out"));
             
             if self.file_system.exists(&output_file).await? {
                 let input = self.file_system.read(&input_file).await?;
