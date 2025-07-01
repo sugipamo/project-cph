@@ -11,7 +11,7 @@ mod application;
 mod domain;
 mod errors;
 
-use application::TestService;
+use application::{TestService, OpenService, SubmitService};
 use infrastructure::drivers::{file_system::LocalFileSystem, shell::SystemShell, test_runner::LocalTestRunner};
 use interfaces::file_system::FileSystem;
 use interfaces::shell::Shell;
@@ -58,6 +58,8 @@ struct AppContainer {
     shell: Arc<dyn Shell>,
     test_runner: Arc<dyn TestRunner>,
     test_service: Arc<TestService>,
+    open_service: Arc<OpenService>,
+    submit_service: Arc<SubmitService>,
 }
 
 impl AppContainer {
@@ -66,12 +68,16 @@ impl AppContainer {
         let shell: Arc<dyn Shell> = Arc::new(SystemShell::new());
         let test_runner: Arc<dyn TestRunner> = Arc::new(LocalTestRunner::new(shell.clone()));
         let test_service = Arc::new(TestService::new(file_system.clone(), test_runner.clone()));
+        let open_service = Arc::new(OpenService::new(file_system.clone(), shell.clone()));
+        let submit_service = Arc::new(SubmitService::new(file_system.clone(), shell.clone()));
         
         Ok(Self {
             file_system,
             shell,
             test_runner,
             test_service,
+            open_service,
+            submit_service,
         })
     }
 }
@@ -94,16 +100,14 @@ async fn main() -> Result<()> {
     let result: Result<()> = match cli.command {
         Commands::Open { name, url } => {
             tracing::info!("Opening problem: {}", name);
-            if let Some(url) = url {
+            if let Some(ref url) = url {
                 tracing::info!("URL: {}", url);
             }
-            // TODO: Implement open command
-            Ok(())
+            container.open_service.open_problem(name, url).await
         }
-        Commands::Submit { problem, file: _ } => {
+        Commands::Submit { problem, file } => {
             tracing::info!("Submitting solution for problem: {}", problem);
-            // TODO: Implement submit command
-            Ok(())
+            container.submit_service.submit_solution(problem, file).await
         }
         Commands::Test { path } => {
             tracing::info!("Running tests for problem in: {:?}", path.as_ref().unwrap_or(&PathBuf::from(".")));
@@ -145,14 +149,30 @@ async fn main() -> Result<()> {
         }
         Commands::Init => {
             tracing::info!("Initializing workspace");
-            // TODO: Implement init command
-            Ok(())
+            eprintln!("このコマンドはまだ実装されていません。");
+            eprintln!("initコマンドは競技プログラミング用のワークスペースを初期化します。");
+            eprintln!("\n手動でセットアップする場合:");
+            eprintln!("  1. プロジェクトディレクトリを作成");
+            eprintln!("  2. 言語固有の設定ファイルを作成 (Cargo.toml, package.json等)");
+            eprintln!("  3. テンプレートファイルを準備");
+            eprintln!("\n今後、このコマンドは自動的にこれらの作業を行います。");
+            Err(anyhow::anyhow!("コマンドが未実装です"))
         }
     };
 
     // Handle errors with user-friendly messages
     if let Err(e) = result {
-        eprintln!("Error: {}", e);
+        eprintln!("エラー: {}", e);
+        
+        // コンテキストに応じた追加のヘルプメッセージ
+        if e.to_string().contains("問題ディレクトリ") && e.to_string().contains("見つかりません") {
+            eprintln!("\nヒント: 'cph open <問題名>' で問題を開いてから実行してください。");
+        } else if e.to_string().contains("ファイルが見つかりません") {
+            eprintln!("\nヒント: ファイルパスが正しいか確認してください。");
+        } else if e.to_string().contains("Some tests failed") {
+            eprintln!("\nヒント: 失敗したテストケースの詳細を確認して、コードを修正してください。");
+        }
+        
         std::process::exit(1);
     }
 
